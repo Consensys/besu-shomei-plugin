@@ -12,9 +12,9 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package rpc;
+package net.consensys.shomei.rpc;
 
-import rpc.methods.GetShomeiTrieLogs;
+import net.consensys.shomei.rpc.methods.GetShomeiTrieLogs;
 
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuContext;

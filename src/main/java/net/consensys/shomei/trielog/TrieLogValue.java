@@ -12,27 +12,23 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package rpc.methods;
+package net.consensys.shomei.trielog;
 
-import org.hyperledger.besu.plugin.BesuContext;
-import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
+import org.hyperledger.besu.plugin.data.TrieLog;
 
-public class GetShomeiTrieLogs {
-  BesuContext context;
-
-  public GetShomeiTrieLogs(BesuContext context) {
-    this.context = context;
+public record TrieLogValue<T>(T prior, T updated, boolean cleared) implements TrieLog.LogTuple<T> {
+  @Override
+  public T getPrior() {
+    return prior;
   }
 
-  public String getNamespace() {
-    return "shomei";
+  @Override
+  public T getUpdated() {
+    return updated;
   }
 
-  public String getName() {
-    return "getTrieLogs";
-  }
-
-  public Object execute(PluginRpcRequest rpcRequest) {
-    return "Hello World!";
+  @Override
+  public boolean isCleared() {
+    return cleared;
   }
 }
