@@ -30,6 +30,7 @@ dependencyManagement {
         // Besu dependencies
         dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
         dependency "org.hyperledger.besu:besu-datatypes:${besuVersion}"
+        dependency "org.hyperledger.besu.internal:rlp:${besuVersion}"
 
 
         // Logging dependencies
@@ -45,13 +46,34 @@ dependencyManagement {
             entry 'auto-service-annotations'
             entry 'auto-service'
         }
-        //vertx
-        dependencySet(group: 'io.vertx', version: '4.4.1') {
+
+        // vertx - match Besu's version
+        dependencySet(group: 'io.vertx', version: '4.3.5') {
             entry 'vertx-core'
             entry 'vertx-junit5'
             entry 'vertx-unit'
             entry 'vertx-web'
             entry 'vertx-web-client'
         }
+
+        // junit
+        dependencySet(group: 'org.junit.jupiter', version: '5.8.2') {
+            entry 'junit-jupiter'
+            entry 'junit-jupiter-api'
+            entry 'junit-jupiter-engine'
+            entry 'junit-jupiter-params'
+        }
+
+        // mockito
+        dependencySet(group: 'org.mockito', version:'4.11.0') {
+            entry 'mockito-core'
+            entry 'mockito-junit-jupiter'
+        }
+
+        dependency 'org.assertj:assertj-core:3.24.2'
+
+        dependency 'com.google.guava:guava:31.1-jre'
+
+
     }
 }

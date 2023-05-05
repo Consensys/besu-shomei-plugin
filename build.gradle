@@ -17,6 +17,7 @@ import groovy.transform.Memoized
 
 buildscript {
     repositories {
+        mavenLocal()
         mavenCentral()
         maven {
             url "https://artifacts.consensys.net/public/maven/maven/"
@@ -40,166 +41,176 @@ plugins {
     id 'java-library'
 }
 
-allprojects {
 
-    apply plugin: 'java-library'
-    apply plugin: 'io.spring.dependency-management'
-    apply plugin: 'net.ltgt.errorprone'
-    apply plugin: 'jacoco'
-    apply from: "${rootDir}/gradle/versions.gradle"
-    apply from: "${rootDir}/gradle/check-licenses.gradle"
+apply plugin: 'java-library'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'net.ltgt.errorprone'
+apply plugin: 'jacoco'
+apply from: "${rootDir}/gradle/versions.gradle"
+apply from: "${rootDir}/gradle/check-licenses.gradle"
 
-    group = 'net.consensys.shomei.besu.plugin'
-    version = '1.0.0'
+group = 'net.consensys.shomei.besu.plugin'
+version = '1.0.0'
 
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
 
-    defaultTasks 'build', 'checkLicenses', 'javadoc', 'plugin'
+defaultTasks 'build', 'checkLicenses', 'javadoc', 'plugin'
 
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        maven {
-            url "https://artifacts.consensys.net/public/maven/maven/"
-            content { includeGroupByRegex('tech\\.pegasys($|\\..*)') }
-        }
-        maven {
-            url "https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/"
-            content { includeGroupByRegex('io\\.libp2p($|\\..*)') }
-        }
-        maven {
-            url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
-            content { includeGroupByRegex('org\\.hyperledger\\.besu($|\\..*)') }
-        }
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        url "https://artifacts.consensys.net/public/maven/maven/"
+        content { includeGroupByRegex('tech\\.pegasys($|\\..*)') }
     }
-
-    dependencies {
-        errorprone("com.google.errorprone:error_prone_core")
-        errorprone("tech.pegasys.tools.epchecks:errorprone-checks")
+    maven {
+        url "https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/"
+        content { includeGroupByRegex('io\\.libp2p($|\\..*)') }
     }
-
-    apply plugin: 'com.diffplug.spotless'
-    spotless {
-        java {
-            // This path needs to be relative to each project
-            target fileTree('.') {
-                include '**/*.java'
-                exclude '**/.gradle/**'
-                exclude '**/resources'
-                exclude '**/src/*/generated'
-                exclude '**/src/*/generated_tests'
-                exclude '**/build/**'
-            }
-            removeUnusedImports()
-            googleJavaFormat('1.15.0')
-            importOrder 'net.consensys', 'java', ''
-            trimTrailingWhitespace()
-            endWithNewline()
-            licenseHeaderFile "${rootDir}/gradle/spotless.java.license"
-        }
-    }
-
-    tasks.withType(JavaCompile) {
-        options.compilerArgs += [
-                '-Xlint:unchecked',
-                '-Xlint:cast',
-                '-Xlint:rawtypes',
-                '-Xlint:overloads',
-                '-Xlint:divzero',
-                '-Xlint:finally',
-                '-Xlint:static',
-                '-Werror',
-        ]
-        options.forkOptions.jvmArgs += [
-                '--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED',
-                '--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED',
-                '--add-opens=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED'
-        ]
-
-        options.errorprone {
-            enabled = !'true'.equalsIgnoreCase(System.getProperty('avt.disableErrorProne'))
-            disableWarningsInGeneratedCode
-
-            // Our equals need to be symmetric, this checker doesn't respect that
-            check('EqualsGetClass', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-            // We use the JSR-305 annotations instead of the Google annotations
-            check('ImmutableEnumChecker', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-            // Storing a lambda to avoid code duplication is not a bad thing
-            check('UnnecessaryLambda', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-            // Generates a ton of false alarms for no real value
-            check('LongDoubleConversion', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-            check('InlineMeSuggester', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-            check('CanIgnoreReturnValueSuggester', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-            check('DirectInvocationOnMock', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-
-            // We don't apply strict javadoc requirements yet
-            check('EmptyBlockTag', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-            check('MissingSummary', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-
-            // Force strict compliance with Java naming conventions
-            check('JavaCase', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-
-            // Check for uses of == that should probably be .equals
-            check('ReferenceComparison', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-
-            // These checks are imported from errorprone-checks dependency but not required in Teku
-            check('MethodInputParametersMustBeFinal', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-            check('BannedMethod', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-            check('ExperimentalCliOptionMustBeCorrectlyDisplayed', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
-
-            // These are experimental checks that we want enabled
-            check('MissingBraces', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('InsecureCryptoUsage', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('WildcardImport', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('DeduplicateConstants', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('RedundantOverride', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('RedundantThrows', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('UnnecessarilyFullyQualified', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('InitializeInline', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('ClassName', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('InterfaceWithOnlyStatics', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-            check('PackageLocation', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
-        }
-        options.encoding = 'UTF-8'
+    maven {
+        url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
+        content { includeGroupByRegex('org\\.hyperledger\\.besu($|\\..*)') }
     }
 }
+
+apply plugin: 'com.diffplug.spotless'
+spotless {
+    java {
+        // This path needs to be relative to each project
+        target fileTree('.') {
+            include '**/*.java'
+            exclude '**/.gradle/**'
+            exclude '**/resources'
+            exclude '**/src/*/generated'
+            exclude '**/src/*/generated_tests'
+            exclude '**/build/**'
+        }
+        removeUnusedImports()
+        googleJavaFormat('1.15.0')
+        importOrder 'net.consensys', 'java', ''
+        trimTrailingWhitespace()
+        endWithNewline()
+        licenseHeaderFile "${rootDir}/gradle/spotless.java.license"
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs += [
+            '-Xlint:unchecked',
+            '-Xlint:cast',
+            '-Xlint:rawtypes',
+            '-Xlint:overloads',
+            '-Xlint:divzero',
+            '-Xlint:finally',
+            '-Xlint:static',
+            '-Werror',
+    ]
+    options.forkOptions.jvmArgs += [
+            '--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED',
+            '--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED',
+            '--add-opens=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED'
+    ]
+
+    options.errorprone {
+        enabled = !'true'.equalsIgnoreCase(System.getProperty('avt.disableErrorProne'))
+        disableWarningsInGeneratedCode
+
+        // Our equals need to be symmetric, this checker doesn't respect that
+        check('EqualsGetClass', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+        // We use the JSR-305 annotations instead of the Google annotations
+        check('ImmutableEnumChecker', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+        // Storing a lambda to avoid code duplication is not a bad thing
+        check('UnnecessaryLambda', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+        // Generates a ton of false alarms for no real value
+        check('LongDoubleConversion', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+        check('InlineMeSuggester', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+        check('CanIgnoreReturnValueSuggester', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+        check('DirectInvocationOnMock', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+
+        // We don't apply strict javadoc requirements yet
+        check('EmptyBlockTag', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+        check('MissingSummary', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+
+        // Force strict compliance with Java naming conventions
+        check('JavaCase', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+
+        // Check for uses of == that should probably be .equals
+        check('ReferenceComparison', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+
+        // These checks are imported from errorprone-checks dependency but not required in Teku
+        check('MethodInputParametersMustBeFinal', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+        check('BannedMethod', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+        check('ExperimentalCliOptionMustBeCorrectlyDisplayed', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+
+        // These are experimental checks that we want enabled
+        check('MissingBraces', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('InsecureCryptoUsage', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('WildcardImport', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('DeduplicateConstants', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('RedundantOverride', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('RedundantThrows', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('UnnecessarilyFullyQualified', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('InitializeInline', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('ClassName', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('InterfaceWithOnlyStatics', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        check('PackageLocation', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+    }
+    options.encoding = 'UTF-8'
+}
+
 dependencies {
+    // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
+    annotationProcessor 'com.google.auto.service:auto-service'
+    compileOnly 'com.google.auto.service:auto-service-annotations'
+    compileOnly 'com.google.guava:guava'
+
+    errorprone("com.google.errorprone:error_prone_core")
+    errorprone("tech.pegasys.tools.epchecks:errorprone-checks")
 
     api 'org.slf4j:slf4j-api'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
     implementation 'org.apache.logging.log4j:log4j-core'
+    implementation 'org.hyperledger.besu.internal:rlp'
 
-    // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
-    annotationProcessor 'com.google.auto.service:auto-service-annotations'
-    compileOnly 'com.google.auto.service:auto-service'
-
-    implementation "org.hyperledger.besu:plugin-api:$besuVersion"
+    implementation "org.hyperledger.besu:plugin-api"
     implementation "org.hyperledger.besu:besu-datatypes"
+    implementation 'io.vertx:vertx-web-client'
+    implementation 'io.vertx:vertx-web'
+    implementation 'io.vertx:vertx-unit'
 
-    testImplementation 'junit:junit'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter'
-
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
 }
 
 apply plugin: 'java'
 
-tasks.shadowJar {
+jar {
     archiveBaseName = 'besu-shomei-plugin'
-    archiveVersion = project.version
 
     manifest {
         attributes(
-                'Specification-Title': archiveBaseName,
-                'Specification-Version': project.version,
-                'Implementation-Title': archiveBaseName,
-                'Implementation-Version': project.version
+                'Specification-Title': archiveBaseName.get(),
+                'Specification-Version': rootProject.version,
+                'Implementation-Title': archiveBaseName.get(),
+                'Implementation-Version': calculateVersion()
         )
     }
+
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }
 
-task plugin(dependsOn: 'shadowJar') {
+test {
+    useJUnitPlatform()
+}
+
+task plugin(dependsOn: 'jar') {
     group 'build'
     description 'Alias for the shadowJar task'
 }
