@@ -14,6 +14,7 @@
  */
 package net.consensys.shomei.trielog;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -118,6 +119,9 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
       output.endList(); // this change
     }
+
+    // optionally write block number
+    layer.getBlockNumber().ifPresent(output::writeLongScalar);
     output.endList(); // container
   }
 
@@ -127,10 +131,13 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   }
 
   public static TrieLogLayer readFrom(final RLPInput input) {
+    Map<Address, TrieLog.LogTuple<AccountValue>> accounts = new HashMap<>();
+    Map<Address, TrieLog.LogTuple<Bytes>> code = new HashMap<>();
+    Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage = new HashMap<>();
 
     input.enterList();
-    var blockHash = Hash.wrap(input.readBytes32());
-    final TrieLogLayer newLayer = new TrieLogLayer(blockHash);
+    Hash blockHash = Hash.wrap(input.readBytes32());
+    Optional<Long> blockNumber = Optional.empty(); // empty if unread
 
     while (!input.isEndOfCurrentList()) {
       input.enterList();
@@ -144,7 +151,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
         final Bytes newCode = nullOrValue(input, RLPInput::readBytes);
         final boolean isCleared = getOptionalIsCleared(input);
         input.leaveList();
-        newLayer.getCodeChanges().put(address, new TrieLogValue<>(oldCode, newCode, isCleared));
+        code.put(address, new TrieLogValue<>(oldCode, newCode, isCleared));
       }
 
       if (input.nextIsNull()) {
@@ -155,9 +162,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
         final AccountValue newValue = nullOrValue(input, ZkAccountValue::readFrom);
         final boolean isCleared = getOptionalIsCleared(input);
         input.leaveList();
-        newLayer
-            .getAccountChanges()
-            .put(address, new TrieLogValue<>(oldValue, newValue, isCleared));
+        accounts.put(address, new TrieLogValue<>(oldValue, newValue, isCleared));
       }
 
       if (input.nextIsNull()) {
@@ -184,16 +189,21 @@ public class ZkTrieLogFactory implements TrieLogFactory {
           input.leaveList();
         }
         input.leaveList();
-        newLayer.getStorageChanges().put(address, storageChanges);
+        storage.put(address, storageChanges);
       }
-
       // lenient leave list for forward compatible additions.
       input.leaveListLenient();
-    }
-    input.leaveListLenient();
-    newLayer.freeze();
 
-    return newLayer;
+      // blockNumber is optional
+      blockNumber =
+          Optional.of(!input.isEndOfCurrentList())
+              .filter(isPresent -> isPresent)
+              .map(__ -> input.readLongScalar());
+    }
+
+    input.leaveListLenient();
+
+    return new TrieLogLayer(blockHash, blockNumber, accounts, code, storage, true);
   }
 
   protected static <T> T nullOrValue(final RLPInput input, final Function<RLPInput, T> reader) {
