@@ -91,13 +91,12 @@ public class ZkTrieLogObserver
             .put("method", "state_sendRawTrieLog")
             .put(
                 "params",
-                // TODO: interface this parameter
                 List.of(
-                    new JsonObject()
-                        .put("blockNumber", addedEvent.layer().getBlockNumber())
-                        .put("blockHash", addedEvent.layer().getBlockHash().toHexString())
-                        .put("isSync", isSyncing)
-                        .put("trieLog", Bytes.wrap(rlpBytes).toHexString())));
+                    new ZkTrieLogParameter(
+                        addedEvent.layer().getBlockNumber().orElse(null),
+                        addedEvent.layer().getBlockHash(),
+                        isSyncing,
+                        Bytes.wrap(rlpBytes).toHexString())));
 
     // Send the request to the JSON-RPC service
     return webClient
