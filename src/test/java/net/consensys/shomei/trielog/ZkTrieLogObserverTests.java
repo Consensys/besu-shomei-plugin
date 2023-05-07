@@ -144,12 +144,12 @@ public class ZkTrieLogObserverTests {
     observer.onSyncStatusChanged(Optional.of(mockSyncStatus));
 
     // assert that isSyncing is true when we are "in sync"
-    assertThat(observer.buildParam(mockEvent).isSyncing()).isEqualTo(false);
+    assertThat(observer.buildParam(mockEvent).isSyncing()).isFalse();
 
     // assert that isSyncing is true when we are "out of sync"
     when(mockSyncStatus.getHighestBlock()).thenReturn(51L);
     observer.onSyncStatusChanged(Optional.of(mockSyncStatus));
-    assertThat(observer.buildParam(mockEvent).isSyncing()).isEqualTo(true);
+    assertThat(observer.buildParam(mockEvent).isSyncing()).isTrue();
 
     // reset syncing status to false:
     when(mockSyncStatus.getHighestBlock()).thenReturn(5L);
@@ -159,7 +159,7 @@ public class ZkTrieLogObserverTests {
     vertx.setTimer(1200L, id -> {
       ctx.verify(() -> {
         assertThat(observer.buildParam(mockEvent).isSyncing())
-            .isEqualTo(false);
+            .isFalse();
       });
       ctx.completeNow();
     });
