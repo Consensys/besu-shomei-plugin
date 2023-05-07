@@ -41,6 +41,7 @@ public class ZkTrieLogObserver
   private String shomeiHttpHost = "localhost";
   private int shomeiHttpPort = 8888;
   private boolean isSyncing;
+  private static long timeSinceLastLog = System.currentTimeMillis();
 
   static TrieLogFactory zkTrieLogFactory = new ZkTrieLogFactory();
   private final WebClient webClient;
@@ -52,11 +53,17 @@ public class ZkTrieLogObserver
     this.shomeiHttpHost = shomeiHttpHost;
     this.shomeiHttpPort = shomeiHttpPort;
 
-    // TODO: wire up the SyncStatusListener via plugin
+    // TODO: wire up the SyncStatusListener via plugin, until then hack:
+
   }
 
   @Override
   public void onTrieLogAdded(final TrieLogEvent event) {
+    // syncing hack:
+    var now = System.currentTimeMillis();
+    this.isSyncing = now - timeSinceLastLog < 1000;
+    timeSinceLastLog = now;
+
     handleShip(event)
         .onComplete(
             ar -> {
@@ -82,21 +89,13 @@ public class ZkTrieLogObserver
   @VisibleForTesting
   Future<HttpResponse<Buffer>> handleShip(final TrieLogEvent addedEvent) {
 
-    byte[] rlpBytes = zkTrieLogFactory.serialize(addedEvent.layer());
-
-    JsonObject jsonRpcRequest =
-        new JsonObject()
-            .put("jsonrpc", "2.0")
-            .put("id", 1)
-            .put("method", "state_sendRawTrieLog")
-            .put(
-                "params",
-                List.of(
-                    new ZkTrieLogParameter(
-                        addedEvent.layer().getBlockNumber().orElse(null),
-                        addedEvent.layer().getBlockHash(),
-                        isSyncing,
-                        Bytes.wrap(rlpBytes).toHexString())));
+    JsonObject jsonRpcRequest = new JsonObject()
+        .put("jsonrpc", "2.0")
+        .put("id", 1)
+        .put("method", "state_sendRawTrieLog")
+        .put(
+            "params",
+            List.of(buildParam(addedEvent)));
 
     // Send the request to the JSON-RPC service
     return webClient
@@ -105,12 +104,24 @@ public class ZkTrieLogObserver
         .sendJsonObject(jsonRpcRequest);
   }
 
+  @VisibleForTesting
+  ZkTrieLogParameter buildParam(final TrieLogEvent addedEvent) {
+    byte[] rlpBytes = zkTrieLogFactory.serialize(addedEvent.layer());
+
+    return new ZkTrieLogParameter(
+        addedEvent.layer().getBlockNumber().orElse(null),
+        addedEvent.layer().getBlockHash(),
+        isSyncing,
+        Bytes.wrap(rlpBytes).toHexString());
+
+  }
+
   @Override
   public void onSyncStatusChanged(final Optional<SyncStatus> syncStatus) {
     syncStatus.ifPresent(
         sync -> {
           // return isSyncing if we are more than 50 blocks behind head
-          isSyncing = sync.getCurrentBlock() < sync.getHighestBlock() - 50;
+          isSyncing = sync.getHighestBlock() - sync.getCurrentBlock() >  50;
         });
   }
 }

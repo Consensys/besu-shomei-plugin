@@ -15,6 +15,8 @@
 package net.consensys.shomei.trielog;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +33,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.plugin.data.SyncStatus;
 import org.hyperledger.besu.plugin.data.TrieLog;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -130,6 +133,36 @@ public class ZkTrieLogObserverTests {
                       });
                   context.completeNow();
                 }));
+  }
+
+  @Test
+  public void assertSyncingHackWorks(VertxTestContext ctx, Vertx vertx) {
+    final ZkTrieLogObserver observer = new ZkTrieLogObserver("localhost", rpcServicePort);
+
+    var mockEvent = new MockTrieLogEvent(trieLogFixture);
+    var mockSyncStatus = mock(SyncStatus.class);
+    observer.onSyncStatusChanged(Optional.of(mockSyncStatus));
+
+    // assert that isSyncing is true when we are "in sync"
+    assertThat(observer.buildParam(mockEvent).isSyncing()).isEqualTo(false);
+
+    // assert that isSyncing is true when we are "out of sync"
+    when(mockSyncStatus.getHighestBlock()).thenReturn(51L);
+    observer.onSyncStatusChanged(Optional.of(mockSyncStatus));
+    assertThat(observer.buildParam(mockEvent).isSyncing()).isEqualTo(true);
+
+    // reset syncing status to false:
+    when(mockSyncStatus.getHighestBlock()).thenReturn(5L);
+    observer.onSyncStatusChanged(Optional.of(mockSyncStatus));
+
+    // assert the hack, that isSyncing is false after 1.2 seconds
+    vertx.setTimer(1200L, id -> {
+      ctx.verify(() -> {
+        assertThat(observer.buildParam(mockEvent).isSyncing())
+            .isEqualTo(false);
+      });
+      ctx.completeNow();
+    });
   }
 
   record MockTrieLogEvent(TrieLogLayer trieLog) implements TrieLogEvent {
