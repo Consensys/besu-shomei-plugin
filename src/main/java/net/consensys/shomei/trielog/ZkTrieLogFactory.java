@@ -25,9 +25,6 @@ import java.util.function.Function;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -41,9 +38,12 @@ import org.hyperledger.besu.plugin.data.TrieLog;
 import org.hyperledger.besu.plugin.data.TrieLog.LogTuple;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ZkTrieLogFactory implements TrieLogFactory {
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogFactory.class);
+
   @Override
   @SuppressWarnings("unchecked")
   public TrieLog create(final TrieLogAccumulator accumulator, final BlockHeader blockHeader) {
@@ -52,7 +52,8 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     var codeToUpdate = accumulator.getCodeToUpdate();
     var storageToUpdate = accumulator.getStorageToUpdate();
 
-    LOG.info("creating ZkTrieLog for block {}:{}", blockHeader.getNumber(), blockHeader.getBlockHash());
+    LOG.info(
+        "creating ZkTrieLog for block {}:{}", blockHeader.getNumber(), blockHeader.getBlockHash());
 
     return new TrieLogLayer(
         blockHeader.getBlockHash(),

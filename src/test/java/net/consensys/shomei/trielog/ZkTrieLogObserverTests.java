@@ -156,13 +156,15 @@ public class ZkTrieLogObserverTests {
     observer.onSyncStatusChanged(Optional.of(mockSyncStatus));
 
     // assert the hack, that isSyncing is false after 1.2 seconds
-    vertx.setTimer(1200L, id -> {
-      ctx.verify(() -> {
-        assertThat(observer.buildParam(mockEvent).isSyncing())
-            .isFalse();
-      });
-      ctx.completeNow();
-    });
+    vertx.setTimer(
+        1200L,
+        id -> {
+          ctx.verify(
+              () -> {
+                assertThat(observer.buildParam(mockEvent).isSyncing()).isFalse();
+              });
+          ctx.completeNow();
+        });
   }
 
   record MockTrieLogEvent(TrieLogLayer trieLog) implements TrieLogEvent {

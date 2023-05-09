@@ -15,6 +15,7 @@
 package net.consensys.shomei.rpc;
 
 import net.consensys.shomei.rpc.methods.GetShomeiTrieLogs;
+import net.consensys.shomei.trielog.ZkTrieLogService;
 
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuContext;
@@ -29,8 +30,8 @@ public class BesuShomeiRpcPlugin implements BesuPlugin {
 
   @Override
   public void register(final BesuContext context) {
-    GetShomeiTrieLogs method = new GetShomeiTrieLogs(context);
     LOG.info("Registering RPC plugin");
+    GetShomeiTrieLogs method = new GetShomeiTrieLogs(ZkTrieLogService.getInstance());
     context
         .getService(RpcEndpointService.class)
         .ifPresent(
