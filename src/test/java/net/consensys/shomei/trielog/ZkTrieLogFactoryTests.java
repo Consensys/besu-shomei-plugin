@@ -16,17 +16,18 @@ package net.consensys.shomei.trielog;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-import java.util.Map;
-import java.util.Optional;
-
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.TrieLog;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
+
+import java.util.Map;
+import java.util.Optional;
+
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -59,21 +60,36 @@ public class ZkTrieLogFactoryTests {
   }
 
   @Test
-  public void testZkSlotKeyIsZeroIsPresent() {
-    // zkbesu test with criteria of decoding slot key when it is present, even if all zero
+  public void testZkSlotKeyIsPresent() {
     TrieLogFactory factory = new ZkTrieLogFactory();
     byte[] rlp = factory.serialize(trieLogFixture);
 
     TrieLog layer = factory.deserialize(rlp);
     assertThat(layer).isEqualTo(trieLogFixture);
 
-    // assert slot key is present for an all zero key:
     assertThat(
-            layer.getStorageChanges().get(Address.ZERO).keySet().stream()
-                .map(k -> k.getSlotKey())
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .anyMatch(key -> key.equals(UInt256.ZERO)))
+        layer.getStorageChanges().get(Address.ZERO).keySet().stream()
+            .map(k -> k.getSlotKey())
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .anyMatch(key -> key.equals(UInt256.ZERO)))
+        .isTrue();
+  }
+
+  @Test
+  public void testZkSlotKeyZeroReadIsPresent() {
+    TrieLogFactory factory = new ZkTrieLogFactory();
+    // add a read of an empty slot:
+    trieLogFixture.getStorageChanges().put(
+        Address.ZERO, Map.of(new StorageSlotKey(UInt256.ONE), new TrieLogValue<>(null, null, false)));
+    byte[] rlp = factory.serialize(trieLogFixture);
+
+    TrieLog layer = factory.deserialize(rlp);
+    assertThat(layer).isEqualTo(trieLogFixture);
+
+    assertThat(
+        layer.getStorageChanges().get(Address.ZERO).values().stream()
+            .anyMatch(v -> v.getPrior() == null && v.getUpdated() == null))
         .isTrue();
   }
 

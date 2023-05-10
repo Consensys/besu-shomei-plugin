@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 
 public class ZkTrieLogFactory implements TrieLogFactory {
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogFactory.class);
-
+  public static final ZkTrieLogFactory INSTANCE = new ZkTrieLogFactory();
   @Override
   @SuppressWarnings("unchecked")
   public TrieLog create(final TrieLogAccumulator accumulator, final BlockHeader blockHeader) {
@@ -81,6 +81,9 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
     output.startList(); // container
     output.writeBytes(layer.getBlockHash());
+    // optionally write block number
+    layer.getBlockNumber().ifPresent(output::writeLongScalar);
+
 
     for (final Address address : addresses) {
       output.startList(); // this change
@@ -127,8 +130,6 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       output.endList(); // this change
     }
 
-    // optionally write block number
-    layer.getBlockNumber().ifPresent(output::writeLongScalar);
     output.endList(); // container
   }
 
@@ -144,7 +145,11 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
     input.enterList();
     Hash blockHash = Hash.wrap(input.readBytes32());
-    Optional<Long> blockNumber = Optional.empty(); // empty if unread
+    // blockNumber is optional
+    Optional<Long> blockNumber =
+        Optional.of(!input.nextIsList())
+            .filter(isPresent -> isPresent)
+            .map(__ -> input.readLongScalar());
 
     while (!input.isEndOfCurrentList()) {
       input.enterList();
@@ -200,14 +205,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       }
       // lenient leave list for forward compatible additions.
       input.leaveListLenient();
-
-      // blockNumber is optional
-      blockNumber =
-          Optional.of(!input.isEndOfCurrentList())
-              .filter(isPresent -> isPresent)
-              .map(__ -> input.readLongScalar());
     }
-
     input.leaveListLenient();
 
     return new TrieLogLayer(blockHash, blockNumber, accounts, code, storage, true);

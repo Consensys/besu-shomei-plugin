@@ -22,7 +22,6 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 public class ShomeiGetTrieLog implements PluginRpcMethod {
   private final TrieLogService trieLogService;
-  private final ZkTrieLogFactory trieLogFactory = new ZkTrieLogFactory();
 
   public ShomeiGetTrieLog(final TrieLogService trieLogService) {
     this.trieLogService = trieLogService;
@@ -47,7 +46,7 @@ public class ShomeiGetTrieLog implements PluginRpcMethod {
     return trieLogService
         .getTrieLogProvider()
         .getTrieLogLayer(blockNumber)
-        .map(t -> Bytes.wrap(trieLogFactory.serialize(t)).toHexString())
+        .map(t -> Bytes.wrap(ZkTrieLogFactory.INSTANCE.serialize(t)).toHexString())
         .orElse("");
   }
 }
