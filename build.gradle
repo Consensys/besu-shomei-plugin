@@ -173,8 +173,8 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
 
     implementation 'org.hyperledger.besu.internal:rlp'
-    implementation "org.hyperledger.besu:plugin-api"
-    implementation "org.hyperledger.besu:besu-datatypes"
+    implementation 'org.hyperledger.besu:plugin-api'
+    implementation 'org.hyperledger.besu:besu-datatypes'
 
     implementation 'io.vertx:vertx-web-client'
     implementation 'io.vertx:vertx-web'

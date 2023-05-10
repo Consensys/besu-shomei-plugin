@@ -14,25 +14,13 @@
  */
 package net.consensys.shomei.rpc.methods;
 
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
-public class GetShomeiTrieLogs {
-  BesuContext context;
+public interface PluginRpcMethod {
 
-  public GetShomeiTrieLogs(BesuContext context) {
-    this.context = context;
-  }
+  String getNamespace();
 
-  public String getNamespace() {
-    return "shomei";
-  }
+  String getName();
 
-  public String getName() {
-    return "getTrieLogs";
-  }
-
-  public Object execute(PluginRpcRequest rpcRequest) {
-    return "Hello World!";
-  }
+  Object execute(PluginRpcRequest rpcRequest);
 }

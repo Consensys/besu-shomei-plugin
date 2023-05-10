@@ -89,13 +89,12 @@ public class ZkTrieLogObserver
   @VisibleForTesting
   Future<HttpResponse<Buffer>> handleShip(final TrieLogEvent addedEvent) {
 
-    JsonObject jsonRpcRequest = new JsonObject()
-        .put("jsonrpc", "2.0")
-        .put("id", 1)
-        .put("method", "state_sendRawTrieLog")
-        .put(
-            "params",
-            List.of(buildParam(addedEvent)));
+    JsonObject jsonRpcRequest =
+        new JsonObject()
+            .put("jsonrpc", "2.0")
+            .put("id", 1)
+            .put("method", "state_sendRawTrieLog")
+            .put("params", List.of(buildParam(addedEvent)));
 
     // Send the request to the JSON-RPC service
     return webClient
@@ -113,7 +112,6 @@ public class ZkTrieLogObserver
         addedEvent.layer().getBlockHash(),
         isSyncing,
         Bytes.wrap(rlpBytes).toHexString());
-
   }
 
   @Override
@@ -121,7 +119,7 @@ public class ZkTrieLogObserver
     syncStatus.ifPresent(
         sync -> {
           // return isSyncing if we are more than 50 blocks behind head
-          isSyncing = sync.getHighestBlock() - sync.getCurrentBlock() >  50;
+          isSyncing = sync.getHighestBlock() - sync.getCurrentBlock() > 50;
         });
   }
 }
