@@ -82,12 +82,12 @@ public class MockJsonRpcHttpVerticle extends AbstractVerticle {
         return;
       }
 
-      final Object[] rangeParams = {"1", "1"};
+      Object[] params = requestBody.getJsonArray("params").stream().toArray(Object[]::new);
       JsonObject responseBody =
           new JsonObject()
               .put("id", requestBody.getInteger("id"))
               .put("jsonrpc", requestBody.getString("jsonrpc"))
-              .put("result", rpcMethod.execute(() -> rangeParams));
+              .put("result", rpcMethod.execute(() -> params));
       ctx.response().putHeader("Content-Type", "application/json").end(Json.encode(responseBody));
     };
   }

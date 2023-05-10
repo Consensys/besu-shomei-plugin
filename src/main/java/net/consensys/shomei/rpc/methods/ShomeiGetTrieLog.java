@@ -15,22 +15,16 @@
 package net.consensys.shomei.rpc.methods;
 
 import net.consensys.shomei.trielog.ZkTrieLogFactory;
-import net.consensys.shomei.trielog.ZkTrieLogService;
 
-import java.util.stream.Collectors;
-
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
-@SuppressWarnings("unused")
-public class GetShomeiTrieLogs implements PluginRpcMethod {
+public class ShomeiGetTrieLog implements PluginRpcMethod {
   private final TrieLogService trieLogService;
   private final ZkTrieLogFactory trieLogFactory = new ZkTrieLogFactory();
 
-  public GetShomeiTrieLogs(ZkTrieLogService trieLogService) {
+  public ShomeiGetTrieLog(final TrieLogService trieLogService) {
     this.trieLogService = trieLogService;
   }
 
@@ -41,28 +35,19 @@ public class GetShomeiTrieLogs implements PluginRpcMethod {
 
   @Override
   public String getName() {
-    return "getTrieLogs";
+    return "getTrieLog";
   }
 
   @Override
   public Object execute(PluginRpcRequest rpcRequest) {
     // todo separate param parsing into method
     var params = rpcRequest.getParams();
-    Long blockNumberFrom = Long.parseLong((String) params[0]);
-    Long blockNumberTo = Long.parseLong((String) params[1]);
+    Long blockNumber = Long.parseLong((String) params[0]);
 
-    return JsonArray.of(
-        trieLogService
-            .getTrieLogProvider()
-            .getTrieLogsByRange(blockNumberFrom, blockNumberTo)
-            .stream()
-            .map(
-                t ->
-                    new JsonObject()
-                        .put("blockNumber", t.blockNumber())
-                        .put(
-                            "trieLog",
-                            Bytes.wrap(trieLogFactory.serialize(t.trieLog())).toHexString()))
-            .collect(Collectors.toList()));
+    return trieLogService
+        .getTrieLogProvider()
+        .getTrieLogLayer(blockNumber)
+        .map(t -> Bytes.wrap(trieLogFactory.serialize(t)).toHexString())
+        .orElse("");
   }
 }
