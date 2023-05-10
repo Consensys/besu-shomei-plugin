@@ -41,7 +41,7 @@ public class ShomeiGetTrieLog implements PluginRpcMethod {
   public Object execute(PluginRpcRequest rpcRequest) {
     // todo separate param parsing into method
     var params = rpcRequest.getParams();
-    Long blockNumber = Long.parseLong((String) params[0]);
+    Long blockNumber = Long.parseLong(params[0].toString());
 
     return trieLogService
         .getTrieLogProvider()
