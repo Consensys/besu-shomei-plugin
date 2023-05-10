@@ -84,8 +84,8 @@ public class GetShomeiTrieLogsTests {
     doAnswer(
             __ ->
                 List.of(
-                    new TrieLogProvider.TrieLogRangePair(1, mockLayer),
-                    new TrieLogProvider.TrieLogRangePair(2, mockLayer)))
+                    new TrieLogProvider.TrieLogRangeTuple(Hash.ZERO, 1, mockLayer),
+                    new TrieLogProvider.TrieLogRangeTuple(Hash.ZERO, 2, mockLayer)))
         .when(mockProvider)
         .getTrieLogsByRange(1L, 2L);
 

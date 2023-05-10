@@ -1,5 +1,6 @@
 package net.consensys.shomei.rpc.response;
 
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogProvider;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -9,22 +10,30 @@ import org.apache.tuweni.bytes.Bytes;
 
 public class TrieLogJson {
 
+  @JsonProperty("blockHash")
+  private Hash blockHash;
+
   @JsonProperty("blockNumber")
   private long blockNumber;
 
   @JsonProperty("trieLog")
   private String trieLog;
 
-  public TrieLogJson(final TrieLogProvider.TrieLogRangePair pair) {
-    this.blockNumber = pair.blockNumber();
-    this.trieLog = Bytes.wrap(ZkTrieLogFactory.INSTANCE.serialize(pair.trieLog())).toHexString();
+  public TrieLogJson(final TrieLogProvider.TrieLogRangeTuple tuple) {
+    this.blockHash = tuple.blockHash();
+    this.blockNumber = tuple.blockNumber();
+    this.trieLog = Bytes.wrap(ZkTrieLogFactory.INSTANCE.serialize(tuple.trieLog())).toHexString();
   }
 
-  public TrieLogJson(long blockNumber, String trieLog) {
+  public TrieLogJson(Hash blockHash, long blockNumber, String trieLog) {
+    this.blockHash = blockHash;
     this.blockNumber = blockNumber;
     this.trieLog = trieLog;
   }
 
+  public Hash getBlockHash() {
+    return blockHash;
+  }
   public long getBlockNumber() {
     return blockNumber;
   }
