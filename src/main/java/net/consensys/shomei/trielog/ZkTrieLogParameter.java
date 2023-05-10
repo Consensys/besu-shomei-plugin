@@ -14,14 +14,11 @@
  */
 package net.consensys.shomei.trielog;
 
-import java.io.IOException;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import net.consensys.shomei.util.HashSerializer;
+
 import org.hyperledger.besu.datatypes.Hash;
 
 public class ZkTrieLogParameter {
@@ -75,13 +72,4 @@ public class ZkTrieLogParameter {
         + trieLog;
   }
 
-  static class HashSerializer extends JsonSerializer<Hash> {
-
-    @Override
-    public void serialize(
-        final Hash value, final JsonGenerator gen, final SerializerProvider serializers)
-        throws IOException {
-      gen.writeString(value.toHexString());
-    }
-  }
 }
