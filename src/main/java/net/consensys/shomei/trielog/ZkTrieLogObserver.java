@@ -43,7 +43,6 @@ public class ZkTrieLogObserver
   private boolean isSyncing;
   private static long timeSinceLastLog = System.currentTimeMillis();
 
-  static TrieLogFactory zkTrieLogFactory = new ZkTrieLogFactory();
   private final WebClient webClient;
 
   public ZkTrieLogObserver(final String shomeiHttpHost, final int shomeiHttpPort) {
@@ -105,7 +104,7 @@ public class ZkTrieLogObserver
 
   @VisibleForTesting
   ZkTrieLogParameter buildParam(final TrieLogEvent addedEvent) {
-    byte[] rlpBytes = zkTrieLogFactory.serialize(addedEvent.layer());
+    byte[] rlpBytes = ZkTrieLogFactory.INSTANCE.serialize(addedEvent.layer());
 
     return new ZkTrieLogParameter(
         addedEvent.layer().getBlockNumber().orElse(null),

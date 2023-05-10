@@ -32,7 +32,6 @@ public class ZkTrieLogService implements TrieLogService {
 
   // TODO: configure:
   private final ZkTrieLogObserver observer = new ZkTrieLogObserver("127.0.0.1", 8888);
-  private final ZkTrieLogFactory factory = new ZkTrieLogFactory();
   private TrieLogProvider trieLogProvider = null;
 
   @Override
@@ -42,7 +41,7 @@ public class ZkTrieLogService implements TrieLogService {
 
   @Override
   public TrieLogFactory getTrieLogFactory() {
-    return factory;
+    return ZkTrieLogFactory.INSTANCE;
   }
 
   @Override

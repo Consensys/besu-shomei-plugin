@@ -14,20 +14,17 @@
  */
 package net.consensys.shomei.rpc.methods;
 
-import net.consensys.shomei.trielog.ZkTrieLogFactory;
-import net.consensys.shomei.trielog.ZkTrieLogService;
+import org.hyperledger.besu.plugin.services.TrieLogService;
+import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 import java.util.stream.Collectors;
 
-import io.vertx.core.json.JsonObject;
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.plugin.services.TrieLogService;
-import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
+import net.consensys.shomei.rpc.response.TrieLogJson;
+import net.consensys.shomei.trielog.ZkTrieLogService;
 
 @SuppressWarnings("unused")
 public class ShomeiGetTrieLogsByRange implements PluginRpcMethod {
   private final TrieLogService trieLogService;
-  private final ZkTrieLogFactory trieLogFactory = new ZkTrieLogFactory();
 
   public ShomeiGetTrieLogsByRange(ZkTrieLogService trieLogService) {
     this.trieLogService = trieLogService;
@@ -54,12 +51,7 @@ public class ShomeiGetTrieLogsByRange implements PluginRpcMethod {
         .getTrieLogProvider()
         .getTrieLogsByRange(blockNumberFrom, blockNumberTo)
         .stream()
-        .map(
-            t ->
-                new JsonObject()
-                    .put("blockNumber", t.blockNumber())
-                    .put(
-                        "trieLog", Bytes.wrap(trieLogFactory.serialize(t.trieLog())).toHexString()))
+        .map(TrieLogJson::new)
         .collect(Collectors.toList());
   }
 }
