@@ -34,8 +34,8 @@ import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 import org.hyperledger.besu.ethereum.rlp.RLPInput;
 import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.plugin.data.BlockHeader;
-import org.hyperledger.besu.plugin.data.TrieLog;
-import org.hyperledger.besu.plugin.data.TrieLog.LogTuple;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLog.LogTuple;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
 import org.slf4j.Logger;
@@ -60,7 +60,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
         Optional.of(blockHeader.getNumber()),
         (Map<Address, LogTuple<AccountValue>>) accountsToUpdate,
         (Map<Address, LogTuple<Bytes>>) codeToUpdate,
-        (Map<Address, Map<StorageSlotKey, TrieLog.LogTuple<UInt256>>>) storageToUpdate,
+        (Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate,
         true);
   }
 
@@ -139,8 +139,8 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   }
 
   public static TrieLogLayer readFrom(final RLPInput input) {
-    Map<Address, TrieLog.LogTuple<AccountValue>> accounts = new HashMap<>();
-    Map<Address, TrieLog.LogTuple<Bytes>> code = new HashMap<>();
+    Map<Address, LogTuple<AccountValue>> accounts = new HashMap<>();
+    Map<Address, LogTuple<Bytes>> code = new HashMap<>();
     Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage = new HashMap<>();
 
     input.enterList();

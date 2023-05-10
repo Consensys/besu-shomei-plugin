@@ -27,7 +27,7 @@ import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
-import org.hyperledger.besu.plugin.data.TrieLog;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 
 /**
  * This class encapsulates the changes that are done to transition one block to the next. This
