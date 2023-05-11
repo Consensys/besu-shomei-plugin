@@ -175,6 +175,8 @@ dependencies {
     implementation 'org.hyperledger.besu.internal:rlp'
     implementation 'org.hyperledger.besu:plugin-api'
     implementation 'org.hyperledger.besu:besu-datatypes'
+    implementation 'info.picocli:picocli'
+
 
     implementation 'io.vertx:vertx-web-client'
     implementation 'io.vertx:vertx-web'

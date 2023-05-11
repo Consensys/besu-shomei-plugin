@@ -17,17 +17,34 @@ package net.consensys.shomei.trielog;
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.TrieLogService;
+
+import java.util.Optional;
+
+import net.consensys.shomei.ShomeiCliOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoService(BesuPlugin.class)
 public class ZkTrieLogPlugin implements BesuPlugin {
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogPlugin.class);
+  private static final String NAME = "shomei";
+  private static ShomeiCliOptions options = ShomeiCliOptions.create();
 
   @Override
   public void register(final BesuContext besuContext) {
     LOG.info("Registering ZkTrieLog plugin");
+
+    LOG.debug("Adding command line params");
+    final Optional<PicoCLIOptions> cmdlineOptions = besuContext.getService(PicoCLIOptions.class);
+
+    if (cmdlineOptions.isEmpty()) {
+      throw new IllegalStateException(
+          "Expecting a PicoCLI options to register CLI options with, but none found.");
+    }
+
+    cmdlineOptions.get().addPicoCLIOptions(NAME, options);
     besuContext.addService(TrieLogService.class, ZkTrieLogService.getInstance());
   }
 
