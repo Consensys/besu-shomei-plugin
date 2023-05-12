@@ -14,7 +14,6 @@
  */
 package net.consensys.shomei.trielog;
 
-
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 
 public record TrieLogValue<T>(T prior, T updated, boolean cleared) implements TrieLog.LogTuple<T> {

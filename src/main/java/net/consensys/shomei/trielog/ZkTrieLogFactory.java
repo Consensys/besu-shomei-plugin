@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 public class ZkTrieLogFactory implements TrieLogFactory {
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogFactory.class);
   public static final ZkTrieLogFactory INSTANCE = new ZkTrieLogFactory();
+
   @Override
   @SuppressWarnings("unchecked")
   public TrieLog create(final TrieLogAccumulator accumulator, final BlockHeader blockHeader) {
@@ -83,7 +84,6 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     output.writeBytes(layer.getBlockHash());
     // optionally write block number
     layer.getBlockNumber().ifPresent(output::writeLongScalar);
-
 
     for (final Address address : addresses) {
       output.startList(); // this change

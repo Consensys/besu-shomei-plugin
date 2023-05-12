@@ -14,11 +14,11 @@
  */
 package net.consensys.shomei.trielog;
 
+import net.consensys.shomei.util.HashSerializer;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import net.consensys.shomei.util.HashSerializer;
-
 import org.hyperledger.besu.datatypes.Hash;
 
 public class ZkTrieLogParameter {
@@ -71,5 +71,4 @@ public class ZkTrieLogParameter {
         + ", trieLog="
         + trieLog;
   }
-
 }

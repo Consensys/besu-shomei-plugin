@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.shomei;
+package net.consensys.shomei.trielog;
 
 import com.google.common.base.MoreObjects;
 import picocli.CommandLine;
@@ -20,13 +20,15 @@ import picocli.CommandLine;
 /** Shomei cli options. */
 public class ShomeiCliOptions {
 
+  static final ShomeiCliOptions INSTANCE = new ShomeiCliOptions();
+
   public static final String DEFAULT_SHOMEI_HTTP_HOST = "127.0.0.1";
 
-  public static final Integer DEFAULT_SHOMEI_HTTP_PORT = 8888;
+  public static final int DEFAULT_SHOMEI_HTTP_PORT = 8888;
 
-  public static final String OPTION_SHOMEI_HTTP_HOST = "--shomei-http-host";
+  public static final String OPTION_SHOMEI_HTTP_HOST = "--plugin-shomei-http-host";
 
-  public static final String OPTION_SHOMEI_HTTP_PORT = "--shomei-http-port";
+  public static final String OPTION_SHOMEI_HTTP_PORT = "--plugin-shomei-http-port";
 
   @CommandLine.Option(
       names = {OPTION_SHOMEI_HTTP_HOST},
@@ -47,7 +49,7 @@ public class ShomeiCliOptions {
   private ShomeiCliOptions() {}
 
   public static ShomeiCliOptions create() {
-    return new ShomeiCliOptions();
+    return INSTANCE;
   }
 
   @Override
@@ -58,4 +60,3 @@ public class ShomeiCliOptions {
         .toString();
   }
 }
-

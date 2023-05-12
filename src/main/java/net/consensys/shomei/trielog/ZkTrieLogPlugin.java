@@ -14,15 +14,13 @@
  */
 package net.consensys.shomei.trielog;
 
+import java.util.Optional;
+
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.TrieLogService;
-
-import java.util.Optional;
-
-import net.consensys.shomei.ShomeiCliOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
