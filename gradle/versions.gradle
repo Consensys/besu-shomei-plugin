@@ -74,6 +74,11 @@ dependencyManagement {
             entry 'mockito-junit-jupiter'
         }
 
+        dependencySet(group: 'info.picocli', version: '4.7.1') {
+            entry 'picocli'
+            entry 'picocli-codegen'
+        }
+
         dependency 'org.assertj:assertj-core:3.24.2'
 
         dependency 'com.google.guava:guava:31.1-jre'

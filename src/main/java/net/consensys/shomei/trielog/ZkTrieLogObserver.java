@@ -29,7 +29,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.SyncStatus;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogEvent;
-import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -14,13 +14,13 @@
  */
 package net.consensys.shomei.rpc.methods;
 
-import org.hyperledger.besu.plugin.services.TrieLogService;
-import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
+import net.consensys.shomei.rpc.response.TrieLogJson;
+import net.consensys.shomei.trielog.ZkTrieLogService;
 
 import java.util.stream.Collectors;
 
-import net.consensys.shomei.rpc.response.TrieLogJson;
-import net.consensys.shomei.trielog.ZkTrieLogService;
+import org.hyperledger.besu.plugin.services.TrieLogService;
+import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 @SuppressWarnings("unused")
 public class ShomeiGetTrieLogsByRange implements PluginRpcMethod {

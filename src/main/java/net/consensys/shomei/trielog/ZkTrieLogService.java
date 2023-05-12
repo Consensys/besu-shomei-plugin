@@ -15,6 +15,7 @@
 package net.consensys.shomei.trielog;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogEvent;
@@ -22,16 +23,21 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogProvider;
 
 public class ZkTrieLogService implements TrieLogService {
-  private static final ZkTrieLogService INSTANCE = new ZkTrieLogService();
+  private static AtomicReference<ZkTrieLogService> singleton = new AtomicReference<>();
 
-  private ZkTrieLogService() {}
+  ZkTrieLogService() {
+    observer =
+        new ZkTrieLogObserver(
+            ShomeiCliOptions.INSTANCE.shomeiHttpHost, ShomeiCliOptions.INSTANCE.shomeiHttpPort);
+  }
 
   public static ZkTrieLogService getInstance() {
-    return INSTANCE;
+    singleton.compareAndSet(null, new ZkTrieLogService());
+    return singleton.get();
   }
 
   // TODO: configure:
-  private final ZkTrieLogObserver observer = new ZkTrieLogObserver("127.0.0.1", 8888);
+  private final ZkTrieLogObserver observer;
   private TrieLogProvider trieLogProvider = null;
 
   @Override
