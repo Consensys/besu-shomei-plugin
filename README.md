@@ -23,7 +23,7 @@ consensys/linea-besu:linea-delivery-1 \
 
 
 # Download
-The latest plugin release version is available on the [releases]((https://github.com/ConsenSys/besu-shomei-plugin/releases)) page.
+The latest plugin release version is available on the [releases](https://github.com/ConsenSys/besu-shomei-plugin/releases) page.
 
 To use a release version, follow these steps:
 
@@ -36,7 +36,7 @@ To use a release version, follow these steps:
 The plugin enhances Besu by:
 
 * Adding RPC endpoints (`shomei_getTrieLog` and `shomei_getTrieLogsByRange`) for Shomei instances to sync with the chain.
-* Configuring a Shomei-friendly trielog serializer and deserializer. Note: __Besu must be synced fresh with this plugin enabled, as the default trielog serializer in Besu does not store enough information in the trielogs to support Linea or Shomei.__
+* Configuring a Shomei-friendly trielog serializer and deserializer. **Note**: __Besu must be synced fresh with this plugin enabled, as the default trielog serializer in Besu does not store enough information in the trielogs to support Linea or Shomei.__
 * Configuring a trielog observer that sends new block trielogs to Shomei as they're processed in Besu. This allows Shomei to keep up with the chain head once synced.
 
 
