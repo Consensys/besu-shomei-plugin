@@ -41,7 +41,7 @@ The plugin enhances Besu by:
 
 
 # Configuration
-Besu will autodetect the presence of the plugin and load and configure it at startup.  However some configuration is to ensure besu and shomei can communicate.
+Besu will autodetect the presence of the plugin and load and configure it at startup.  However some additional configuration is to ensure besu and shomei can communicate.
 
 ## Enable SHOMEI RPC-HTTP-API Endpoint
 The plugin registers an additional RPC namespace `SHOMEI` for Shomei to query Besu for trielogs. Enable this namespace in Besu's configuration through the [--rpc-http-api config](https://besu.hyperledger.org/en/stable/public-networks/reference/cli/options/#rpc-http-api) option.  
@@ -91,7 +91,7 @@ mkdir -p /opt/besu/plugins
 
 ## Release Process
 Here are the steps for releasing a new version of the plugin:
-1. Create a tag with the release version number in the format vX.Y.Z (e.g., v.0.2.0).
+1. Create a tag with the release version number in the format vX.Y.Z (e.g., v0.2.0 creates a release version 0.2.0).
 2. Push the tag to the repository.
 3. GitHub Actions will automatically create a draft release for the release tag.
 4. Once the release workflow completes, update the release notes, uncheck "Draft", and publish the release.
