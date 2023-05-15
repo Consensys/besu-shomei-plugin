@@ -50,7 +50,8 @@ apply from: "${rootDir}/gradle/versions.gradle"
 apply from: "${rootDir}/gradle/check-licenses.gradle"
 
 group = 'net.consensys.shomei.besu.plugin'
-version = '1.0.0'
+//version = '0.1.0'
+version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
 
 sourceCompatibility = JavaVersion.VERSION_17
 targetCompatibility = JavaVersion.VERSION_17
@@ -218,7 +219,7 @@ test {
 
 task plugin(dependsOn: 'jar') {
     group 'build'
-    description 'Alias for the shadowJar task'
+    description 'Alias for the jar task'
 }
 
 
