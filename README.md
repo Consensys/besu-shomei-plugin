@@ -12,6 +12,7 @@ Then, run the linea-besu docker container with the plugin mounted as a volume:
 docker run -it -v `pwd`/build/libs:/opt/besu/plugins \
 consensys/linea-besu:linea-delivery-1 \
 --network=linea \
+--data-storage-format=BONSAI \
 --rpc-http-enabled=true \
 --rpc-http-host="0.0.0.0" \
 --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,SHOMEI \
@@ -60,6 +61,7 @@ The simplest way to use the plugin is with the [linea-besu](https://hub.docker.c
 docker run -it -v <FOLDER_CONTAINING_PLUGIN_JAR>:/opt/besu/plugins \
 consensys/linea-besu:linea-delivery-1 \
 --network=linea \
+--data-storage-format=BONSAI \
 --rpc-http-enabled=true \
 --rpc-http-host="0.0.0.0" \
 --rpc-http-api=ADMIN,DEBUG,NET,ETH,WEB3,PLUGINS,SHOMEI \
