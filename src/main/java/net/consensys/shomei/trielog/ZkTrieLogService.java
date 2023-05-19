@@ -23,26 +23,28 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogProvider;
 
 public class ZkTrieLogService implements TrieLogService {
-  private static AtomicReference<ZkTrieLogService> singleton = new AtomicReference<>();
+  private static ZkTrieLogService singleton = new ZkTrieLogService();
 
-  ZkTrieLogService() {
-    observer =
-        new ZkTrieLogObserver(
-            ShomeiCliOptions.INSTANCE.shomeiHttpHost, ShomeiCliOptions.INSTANCE.shomeiHttpPort);
-  }
+  ZkTrieLogService() {}
 
   public static ZkTrieLogService getInstance() {
-    singleton.compareAndSet(null, new ZkTrieLogService());
-    return singleton.get();
+    return singleton;
   }
 
   // TODO: configure:
-  private final ZkTrieLogObserver observer;
+  private final AtomicReference<ZkTrieLogObserver> observer = new AtomicReference<>();
   private TrieLogProvider trieLogProvider = null;
 
   @Override
   public List<TrieLogEvent.TrieLogObserver> getObservers() {
-    return List.of(observer);
+    // initialize observer late so we are assured we have gotten pico cli params from besu
+    if (observer.get() == null) {
+      observer.compareAndSet(
+          null,
+          new ZkTrieLogObserver(
+              ShomeiCliOptions.INSTANCE.shomeiHttpHost, ShomeiCliOptions.INSTANCE.shomeiHttpPort));
+    }
+    return List.of(observer.get());
   }
 
   @Override

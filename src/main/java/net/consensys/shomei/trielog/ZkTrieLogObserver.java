@@ -37,8 +37,8 @@ public class ZkTrieLogObserver
 
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogObserver.class);
   // todo: get from config
-  private String shomeiHttpHost = "localhost";
-  private int shomeiHttpPort = 8888;
+  private final String shomeiHttpHost;
+  private final int shomeiHttpPort;
   private boolean isSyncing;
   private static long timeSinceLastLog = System.currentTimeMillis();
 
@@ -50,6 +50,7 @@ public class ZkTrieLogObserver
     this.webClient = WebClient.create(vertx, options);
     this.shomeiHttpHost = shomeiHttpHost;
     this.shomeiHttpPort = shomeiHttpPort;
+    LOG.info("shomei http host:port {}:{}", this.shomeiHttpHost, this.shomeiHttpPort);
 
     // TODO: wire up the SyncStatusListener via plugin, until then hack:
 
