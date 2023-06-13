@@ -37,7 +37,7 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
  * trie changes as well.
  */
 @SuppressWarnings("unchecked")
-public record TrieLogLayer(
+public record PluginTrieLogLayer(
     Hash blockHash,
     Optional<Long> blockNumber,
     Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
@@ -46,8 +46,8 @@ public record TrieLogLayer(
     boolean frozen)
     implements TrieLog {
 
-  /** Creates a new TrieLogLayer with blockhash and empty maps to deserialize into. */
-  public TrieLogLayer(final Hash blockHash) {
+  /** Creates a new PluginTrieLogLayer with blockhash and empty maps to deserialize into. */
+  public PluginTrieLogLayer(final Hash blockHash) {
     this(blockHash, Optional.empty(), new HashMap<>(), new HashMap<>(), new HashMap<>(), true);
   }
 
@@ -186,7 +186,7 @@ public record TrieLogLayer(
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    TrieLogLayer that = (TrieLogLayer) o;
+    PluginTrieLogLayer that = (PluginTrieLogLayer) o;
     return new EqualsBuilder()
         .append(frozen, that.frozen)
         .append(blockHash, that.blockHash)

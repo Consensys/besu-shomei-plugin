@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 
 import net.consensys.shomei.rpc.methods.ShomeiGetTrieLog;
 import net.consensys.shomei.rpc.methods.ShomeiGetTrieLogsByRange;
-import net.consensys.shomei.trielog.TrieLogLayer;
+import net.consensys.shomei.trielog.PluginTrieLogLayer;
 import net.consensys.shomei.trielog.ZkTrieLogService;
 
 import java.util.List;
@@ -51,8 +51,8 @@ public class GetShomeiTrieLogsTests {
   ZkTrieLogService trieLogService = spy(ZkTrieLogService.getInstance());
   @Mock TrieLogProvider mockProvider;
 
-  TrieLogLayer mockLayer =
-      new TrieLogLayer(Hash.ZERO, Optional.of(0L), Map.of(), Map.of(), Map.of(), true);
+  PluginTrieLogLayer mockLayer =
+      new PluginTrieLogLayer(Hash.ZERO, Optional.of(0L), Map.of(), Map.of(), Map.of(), true);
 
   MockJsonRpcHttpVerticle verticle;
   WebClient client;
