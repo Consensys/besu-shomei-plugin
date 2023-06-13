@@ -49,8 +49,8 @@ public class ZkTrieLogObserverTests {
       "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"accepted\"}";
 
   private ZkTrieLogFactory zkTrieLogFactory = new ZkTrieLogFactory();
-  private TrieLogLayer trieLogFixture =
-      new TrieLogLayer(
+  private PluginTrieLogLayer trieLogFixture =
+      new PluginTrieLogLayer(
           Hash.ZERO,
           Optional.of(1337L),
           Map.of(
@@ -167,7 +167,7 @@ public class ZkTrieLogObserverTests {
         });
   }
 
-  record MockTrieLogEvent(TrieLogLayer trieLog) implements TrieLogEvent {
+  record MockTrieLogEvent(PluginTrieLogLayer trieLog) implements TrieLogEvent {
     @Override
     public Type getType() {
       return Type.ADDED;

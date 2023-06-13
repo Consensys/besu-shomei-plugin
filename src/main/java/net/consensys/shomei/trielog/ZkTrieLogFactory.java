@@ -56,7 +56,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     LOG.info(
         "creating ZkTrieLog for block {}:{}", blockHeader.getNumber(), blockHeader.getBlockHash());
 
-    return new TrieLogLayer(
+    return new PluginTrieLogLayer(
         blockHeader.getBlockHash(),
         Optional.of(blockHeader.getNumber()),
         (Map<Address, LogTuple<AccountValue>>) accountsToUpdate,
@@ -134,11 +134,11 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   }
 
   @Override
-  public TrieLogLayer deserialize(final byte[] bytes) {
+  public PluginTrieLogLayer deserialize(final byte[] bytes) {
     return readFrom(new BytesValueRLPInput(Bytes.wrap(bytes), false));
   }
 
-  public static TrieLogLayer readFrom(final RLPInput input) {
+  public static PluginTrieLogLayer readFrom(final RLPInput input) {
     Map<Address, LogTuple<AccountValue>> accounts = new HashMap<>();
     Map<Address, LogTuple<Bytes>> code = new HashMap<>();
     Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage = new HashMap<>();
@@ -208,7 +208,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     }
     input.leaveListLenient();
 
-    return new TrieLogLayer(blockHash, blockNumber, accounts, code, storage, true);
+    return new PluginTrieLogLayer(blockHash, blockNumber, accounts, code, storage, true);
   }
 
   protected static <T> T nullOrValue(final RLPInput input, final Function<RLPInput, T> reader) {

@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
 public class ZkTrieLogFactoryTests {
 
   final Address accountFixture = Address.fromHexString("0xdeadbeef");
-  final TrieLogLayer trieLogFixture = new TrieLogLayer(Hash.ZERO);
+  final PluginTrieLogLayer trieLogFixture = new PluginTrieLogLayer(Hash.ZERO);
 
   @BeforeEach
   public void setup() {
