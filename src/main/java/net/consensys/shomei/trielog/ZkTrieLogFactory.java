@@ -247,7 +247,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     } else {
       writer.accept(output, value.getUpdated());
     }
-    if (!value.isCleared()) {
+    if (!value.isClearedAtLeastOnce()) {
       output.writeNull();
     } else {
       output.writeInt(1);

@@ -28,7 +28,12 @@ public record TrieLogValue<T>(T prior, T updated, boolean cleared) implements Tr
   }
 
   @Override
-  public boolean isCleared() {
+  public boolean isLastStepCleared() {
+    return false;
+  }
+
+  @Override
+  public boolean isClearedAtLeastOnce() {
     return cleared;
   }
 }
