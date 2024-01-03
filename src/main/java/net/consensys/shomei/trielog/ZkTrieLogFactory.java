@@ -53,7 +53,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     var codeToUpdate = accumulator.getCodeToUpdate();
     var storageToUpdate = accumulator.getStorageToUpdate();
 
-    LOG.info(
+    LOG.debug(
         "creating ZkTrieLog for block {}:{}", blockHeader.getNumber(), blockHeader.getBlockHash());
 
     return new PluginTrieLogLayer(
@@ -247,7 +247,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     } else {
       writer.accept(output, value.getUpdated());
     }
-    if (!value.isCleared()) {
+    if (!value.isClearedAtLeastOnce()) {
       output.writeNull();
     } else {
       output.writeInt(1);
