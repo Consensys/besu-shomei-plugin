@@ -1,5 +1,7 @@
 # Changelog
 
+## version 0.3.1-SNAPSHOT
+
 ## version 0.3.0
 this release version uses the final build of 23.10.4-SNAPSHOT
 
