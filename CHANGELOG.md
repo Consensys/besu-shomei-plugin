@@ -1,5 +1,12 @@
 # Changelog
 
+## version 0.3.1
+Bump besu dependency to 24.6.0
+- minor trielog factory interface change
+- bump java to 21
+- bump gradle to 8.7.0
+- add hyperledger artifactory repo for besu maven deps
+
 ## version 0.3.0
 this release version uses the final build of 23.10.4-SNAPSHOT
 
