@@ -15,6 +15,7 @@
 package net.consensys.shomei.trielog;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.hyperledger.besu.plugin.services.TrieLogService;
@@ -48,8 +49,8 @@ public class ZkTrieLogService implements TrieLogService {
   }
 
   @Override
-  public TrieLogFactory getTrieLogFactory() {
-    return ZkTrieLogFactory.INSTANCE;
+  public Optional<TrieLogFactory> getTrieLogFactory() {
+    return Optional.of(ZkTrieLogFactory.INSTANCE);
   }
 
   @Override

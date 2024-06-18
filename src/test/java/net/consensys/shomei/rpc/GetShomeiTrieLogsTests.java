@@ -147,7 +147,7 @@ public class GetShomeiTrieLogsTests {
           var res = response.getString("result");
           assertThat(res)
               .isEqualTo(
-                  Bytes.wrap(trieLogService.getTrieLogFactory().serialize(mockLayer))
+                  Bytes.wrap(trieLogService.getTrieLogFactory().get().serialize(mockLayer))
                       .toHexString());
         });
   }
