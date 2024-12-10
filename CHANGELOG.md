@@ -1,5 +1,8 @@
 # Changelog
 
+## version 0.3.2
+- minor bump for gradle and besu version
+
 ## version 0.3.1
 Bump besu dependency to 24.6.0
 - minor trielog factory interface change
