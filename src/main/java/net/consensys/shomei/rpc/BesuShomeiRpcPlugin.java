@@ -21,8 +21,8 @@ import net.consensys.shomei.trielog.ZkTrieLogService;
 import java.util.List;
 
 import com.google.auto.service.AutoService;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,13 +32,13 @@ public class BesuShomeiRpcPlugin implements BesuPlugin {
   private static final Logger LOG = LoggerFactory.getLogger(BesuShomeiRpcPlugin.class);
 
   @Override
-  public void register(final BesuContext context) {
+  public void register(final ServiceManager serviceManager) {
     LOG.debug("Registering RPC plugins");
     var methods =
         List.of(
             new ShomeiGetTrieLogsByRange(ZkTrieLogService.getInstance()),
             new ShomeiGetTrieLog(ZkTrieLogService.getInstance()));
-    context
+    serviceManager
         .getService(RpcEndpointService.class)
         .ifPresent(
             rpcEndpointService ->

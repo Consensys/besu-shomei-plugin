@@ -17,8 +17,8 @@ package net.consensys.shomei.trielog;
 import java.util.Optional;
 
 import com.google.auto.service.AutoService;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.slf4j.Logger;
@@ -31,11 +31,11 @@ public class ZkTrieLogPlugin implements BesuPlugin {
   private static ShomeiCliOptions options = ShomeiCliOptions.create();
 
   @Override
-  public void register(final BesuContext besuContext) {
+  public void register(final ServiceManager serviceManager) {
     LOG.info("Registering ZkTrieLog plugin");
 
     LOG.debug("Adding command line params");
-    final Optional<PicoCLIOptions> cmdlineOptions = besuContext.getService(PicoCLIOptions.class);
+    final Optional<PicoCLIOptions> cmdlineOptions = serviceManager.getService(PicoCLIOptions.class);
 
     if (cmdlineOptions.isEmpty()) {
       throw new IllegalStateException(
@@ -43,7 +43,7 @@ public class ZkTrieLogPlugin implements BesuPlugin {
     }
 
     cmdlineOptions.get().addPicoCLIOptions(NAME, options);
-    besuContext.addService(TrieLogService.class, ZkTrieLogService.getInstance());
+    serviceManager.addService(TrieLogService.class, ZkTrieLogService.getInstance());
   }
 
   @Override
