@@ -17,7 +17,11 @@ import groovy.transform.Memoized
 
 buildscript {
     repositories {
-        mavenLocal()
+        maven {
+            url "https://artifacts.consensys.net/public/linea-besu/maven/"
+            content { includeGroupByRegex('io\\.consensys\\..*') }
+            content { includeGroupByRegex('org\\.hyperledger\\..*') }
+        }
         maven {
             url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
             content { includeGroupByRegex('org\\.hyperledger\\.besu\\..*')}
@@ -27,6 +31,7 @@ buildscript {
             url "https://artifacts.consensys.net/public/maven/maven/"
             content { includeGroupByRegex('tech\\.pegasys\\..*')}
         }
+        mavenLocal()
     }
     dependencies {
         classpath 'tech.pegasys.internal.license.reporter:license-reporter:1.1.1'
@@ -63,7 +68,11 @@ targetCompatibility = JavaVersion.VERSION_21
 defaultTasks 'build', 'checkLicenses', 'javadoc', 'plugin'
 
 repositories {
-    mavenLocal()
+    maven {
+        url "https://artifacts.consensys.net/public/linea-besu/maven/"
+        content { includeGroupByRegex('io\\.consensys\\..*') }
+        content { includeGroupByRegex('org\\.hyperledger\\..*') }
+    }
     maven {
         url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
         content { includeGroupByRegex('org\\.hyperledger\\.besu\\..*')}
@@ -81,6 +90,7 @@ repositories {
         url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
         content { includeGroupByRegex('org\\.hyperledger\\.besu($|\\..*)') }
     }
+    mavenLocal()
 }
 
 apply plugin: 'com.diffplug.spotless'
