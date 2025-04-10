@@ -23,6 +23,10 @@ import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+import com.google.common.annotations.VisibleForTesting;
+import net.consensys.shomei.blocktracing.ZkBlockImportTracerProvider;
+import net.consensys.shomei.blocktracing.ZkBlockImportTracerProvider.HeaderTracerTuple;
+import net.consensys.shomei.cli.ShomeiCliOptions;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
@@ -34,6 +38,7 @@ import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 import org.hyperledger.besu.ethereum.rlp.RLPInput;
 import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog.LogTuple;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
@@ -42,12 +47,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ZkTrieLogFactory implements TrieLogFactory {
-  private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogFactory.class);
+
   public static final ZkTrieLogFactory INSTANCE = new ZkTrieLogFactory();
+  private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogFactory.class);
+  private static final ShomeiCliOptions options = ShomeiCliOptions.create();
+  private static final ZkBlockImportTracerProvider traceProvider = ZkBlockImportTracerProvider.INSTANCE;
+
+  @VisibleForTesting
+  ZkTrieLogFactory() {}
 
   @Override
   @SuppressWarnings("unchecked")
   public TrieLog create(final TrieLogAccumulator accumulator, final BlockHeader blockHeader) {
+
+    if (options.enableTraceFiltering) {
+      LOG.debug(
+          "filtering ZkTrieLog with ZkTracer for block {}:{}",
+          blockHeader.getNumber(), blockHeader.getBlockHash());
+      traceProvider.filterWithTrace(blockHeader, accumulator);
+    }
 
     var accountsToUpdate = accumulator.getAccountsToUpdate();
     var codeToUpdate = accumulator.getCodeToUpdate();

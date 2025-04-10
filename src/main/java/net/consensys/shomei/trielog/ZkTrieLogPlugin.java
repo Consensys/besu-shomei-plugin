@@ -17,6 +17,7 @@ package net.consensys.shomei.trielog;
 import java.util.Optional;
 
 import com.google.auto.service.AutoService;
+import net.consensys.shomei.cli.ShomeiCliOptions;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;

@@ -35,6 +35,11 @@ dependencyManagement {
         dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
         dependency "org.hyperledger.besu:besu-datatypes:${besuVersion}"
         dependency "org.hyperledger.besu.internal:rlp:${besuVersion}"
+
+        // arithmetization dependencies
+        dependency "net.consensys.linea.zktracer:arithmetization:${arithmetizationVersion}"
+
+
         // Logging dependencies
         dependencySet(group: 'org.apache.logging.log4j', version: '2.20.0') {
             entry 'log4j-api'

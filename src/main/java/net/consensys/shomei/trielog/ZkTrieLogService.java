@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
+import net.consensys.shomei.cli.ShomeiCliOptions;
 import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogEvent;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
@@ -25,6 +26,7 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLogProvider;
 
 public class ZkTrieLogService implements TrieLogService {
   private static ZkTrieLogService singleton = new ZkTrieLogService();
+  private static final ShomeiCliOptions options = ShomeiCliOptions.create();
 
   ZkTrieLogService() {}
 
@@ -43,7 +45,7 @@ public class ZkTrieLogService implements TrieLogService {
       observer.compareAndSet(
           null,
           new ZkTrieLogObserver(
-              ShomeiCliOptions.INSTANCE.shomeiHttpHost, ShomeiCliOptions.INSTANCE.shomeiHttpPort));
+              options.shomeiHttpHost, options.shomeiHttpPort));
     }
     return List.of(observer.get());
   }

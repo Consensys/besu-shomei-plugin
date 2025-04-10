@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.shomei.trielog;
+package net.consensys.shomei.cli;
 
 import com.google.common.base.MoreObjects;
 import picocli.CommandLine;
@@ -26,9 +26,13 @@ public class ShomeiCliOptions {
 
   public static final int DEFAULT_SHOMEI_HTTP_PORT = 8888;
 
+  public static final Boolean DEFAULT_ENABLE_TRACE_FILTERING = false;
+
   public static final String OPTION_SHOMEI_HTTP_HOST = "--plugin-shomei-http-host";
 
   public static final String OPTION_SHOMEI_HTTP_PORT = "--plugin-shomei-http-port";
+
+  public static final String OPTION_SHOMEI_ENABLE_TRACE_FILTERING = "--plugin-shomei-enable-trace-filtering";
 
   @CommandLine.Option(
       names = {OPTION_SHOMEI_HTTP_HOST},
@@ -36,7 +40,8 @@ public class ShomeiCliOptions {
       defaultValue = DEFAULT_SHOMEI_HTTP_HOST,
       paramLabel = "<STRING>",
       description = "HTTP host to push shomei trielogs to")
-  String shomeiHttpHost = DEFAULT_SHOMEI_HTTP_HOST;
+  //TODO final?
+  public String shomeiHttpHost = DEFAULT_SHOMEI_HTTP_HOST;
 
   @CommandLine.Option(
       names = {OPTION_SHOMEI_HTTP_PORT},
@@ -44,7 +49,17 @@ public class ShomeiCliOptions {
       defaultValue = "8888",
       paramLabel = "<INTEGER>",
       description = "HTTP host port to push shomei trielogs to")
-  Integer shomeiHttpPort = DEFAULT_SHOMEI_HTTP_PORT;
+  //TODO final?
+  public Integer shomeiHttpPort = DEFAULT_SHOMEI_HTTP_PORT;
+
+  @CommandLine.Option(
+      names = {OPTION_SHOMEI_ENABLE_TRACE_FILTERING},
+      hidden = true,
+      defaultValue = "false",
+      paramLabel = "<BOOLEAN>",
+      description = "Whether to use zkTracer filtering on trielogs")
+  //TODO final?
+  public Boolean enableTraceFiltering = DEFAULT_ENABLE_TRACE_FILTERING;
 
   private ShomeiCliOptions() {}
 
@@ -57,6 +72,7 @@ public class ShomeiCliOptions {
     return MoreObjects.toStringHelper(this)
         .add("shomeiHttpHost", shomeiHttpHost)
         .add("shomeiHttpPort", shomeiHttpPort)
+        .add("shomeiEnableTraceFiltering", enableTraceFiltering)
         .toString();
   }
 }
