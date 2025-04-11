@@ -26,13 +26,18 @@ public class ShomeiCliOptions {
 
   public static final int DEFAULT_SHOMEI_HTTP_PORT = 8888;
 
-  public static final Boolean DEFAULT_ENABLE_TRACE_FILTERING = false;
+  public static final Boolean DEFAULT_ENABLE_ZKTRACER = false;
+
+  public static final Boolean DEFAULT_ENABLE_ZKTRACE_COMPARISON = false;
 
   public static final String OPTION_SHOMEI_HTTP_HOST = "--plugin-shomei-http-host";
 
   public static final String OPTION_SHOMEI_HTTP_PORT = "--plugin-shomei-http-port";
 
-  public static final String OPTION_SHOMEI_ENABLE_TRACE_FILTERING = "--plugin-shomei-enable-trace-filtering";
+  public static final String OPTION_SHOMEI_ENABLE_ZKTRACER = "--plugin-shomei-enable-zktracer";
+
+  public static final String OPTION_SHOMEI_ENABLE_ZKTRACE_COMPARISON =
+      "--plugin-shomei-enable-zktrace-comparison";
 
   @CommandLine.Option(
       names = {OPTION_SHOMEI_HTTP_HOST},
@@ -40,7 +45,7 @@ public class ShomeiCliOptions {
       defaultValue = DEFAULT_SHOMEI_HTTP_HOST,
       paramLabel = "<STRING>",
       description = "HTTP host to push shomei trielogs to")
-  //TODO final?
+  // TODO final?
   public String shomeiHttpHost = DEFAULT_SHOMEI_HTTP_HOST;
 
   @CommandLine.Option(
@@ -49,17 +54,26 @@ public class ShomeiCliOptions {
       defaultValue = "8888",
       paramLabel = "<INTEGER>",
       description = "HTTP host port to push shomei trielogs to")
-  //TODO final?
+  // TODO final?
   public Integer shomeiHttpPort = DEFAULT_SHOMEI_HTTP_PORT;
 
   @CommandLine.Option(
-      names = {OPTION_SHOMEI_ENABLE_TRACE_FILTERING},
+      names = {OPTION_SHOMEI_ENABLE_ZKTRACER},
       hidden = true,
       defaultValue = "false",
       paramLabel = "<BOOLEAN>",
-      description = "Whether to use zkTracer filtering on trielogs")
-  //TODO final?
-  public Boolean enableTraceFiltering = DEFAULT_ENABLE_TRACE_FILTERING;
+      description = "Use zkTracer on block import")
+  // TODO final?
+  public Boolean enableZkTracer = DEFAULT_ENABLE_ZKTRACER;
+
+  @CommandLine.Option(
+      names = {OPTION_SHOMEI_ENABLE_ZKTRACE_COMPARISON},
+      hidden = true,
+      defaultValue = "false",
+      paramLabel = "<BOOLEAN>",
+      description = "Compare zkTracer state to accumulator on block import")
+  // TODO final?
+  public Boolean enableZkTraceComparison = DEFAULT_ENABLE_ZKTRACE_COMPARISON;
 
   private ShomeiCliOptions() {}
 
@@ -72,7 +86,8 @@ public class ShomeiCliOptions {
     return MoreObjects.toStringHelper(this)
         .add("shomeiHttpHost", shomeiHttpHost)
         .add("shomeiHttpPort", shomeiHttpPort)
-        .add("shomeiEnableTraceFiltering", enableTraceFiltering)
+        .add("shomeiEnableZkTracer", enableZkTracer)
+        .add("shomeiEnableZkTraceComparison", enableZkTraceComparison)
         .toString();
   }
 }
