@@ -14,6 +14,7 @@
  */
 package net.consensys.shomei.trielog;
 
+import net.consensys.shomei.blocktracing.ZkBlockImportTracerProvider;
 import net.consensys.shomei.cli.ShomeiCliOptions;
 
 import java.util.Optional;
@@ -21,6 +22,7 @@ import java.util.Optional;
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
+import org.hyperledger.besu.plugin.services.BlockImportTracerProvider;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.slf4j.Logger;
@@ -45,7 +47,13 @@ public class ZkTrieLogPlugin implements BesuPlugin {
     }
 
     cmdlineOptions.get().addPicoCLIOptions(NAME, options);
+
     serviceManager.addService(TrieLogService.class, ZkTrieLogService.getInstance());
+
+    if (options.enableZkTracer) {
+      serviceManager.addService(
+          BlockImportTracerProvider.class, ZkBlockImportTracerProvider.INSTANCE);
+    }
   }
 
   @Override
