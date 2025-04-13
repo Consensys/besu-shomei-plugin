@@ -108,15 +108,16 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     var storageToUpdate = accumulator.getStorageToUpdate();
     var accountsToUpdate = accumulator.getAccountsToUpdate();
 
-    compareAndWarnAccount(accountsToUpdate, currentBlockStack.addressesSeenByHub());
+    compareAndWarnAccount(blockHeader, accountsToUpdate, currentBlockStack.addressesSeenByHub());
 
-    compareAndWarnStorage(storageToUpdate, currentBlockStack.storagesSeenByHub());
+    compareAndWarnStorage(blockHeader, storageToUpdate, currentBlockStack.storagesSeenByHub());
 
     LOG.info("completed comparison for {}", headerLogString(blockHeader));
   }
 
   @VisibleForTesting
   void compareAndWarnStorage(
+      final BlockHeader blockHeader,
       final Map<Address, ? extends Map<StorageSlotKey, ? extends LogTuple<UInt256>>>
           storageToUpdate,
       final Map<Address, Set<Bytes32>> hubSeenStorage) {
@@ -128,7 +129,8 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
         alert(
             () ->
                 LOG.warn(
-                    "hub account {} in missing in accumulator storage slot modifications",
+                    "block {} hub account {} in missing in accumulator storage slot modifications",
+                    blockHeader.getNumber(),
                     hubStorageEntry.getKey().toHexString()));
       } else {
         hubStorageEntry.getValue().stream()
@@ -141,7 +143,8 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                     alert(
                         () ->
                             LOG.warn(
-                                "hub account {} slot key {} is missing from accumulator modifications",
+                                "block {} hub account {} slot key {} is missing from accumulator modifications",
+                                blockHeader.getNumber(),
                                 hubStorageEntry.getKey().toHexString(),
                                 hubSlotKey.toHexString())));
       }
@@ -154,20 +157,22 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
         alert(
             () ->
                 LOG.warn(
-                    "accumulator storage account {} is missing from hub seen storage modifications",
+                    "block {} accumulator storage account {} is missing from hub seen storage modifications",
+                    blockHeader.getNumber(),
                     accumulatorEntry.getKey().toHexString()));
       } else {
         accumulatorEntry.getValue().keySet().stream()
             .filter(
                 accumulatorSlotKey ->
-                    !hubSeenEntry.contains(
-                        accumulatorSlotKey.getSlotKey().orElse(UInt256.MAX_VALUE)))
+                    accumulatorSlotKey.getSlotKey().isPresent()
+                        && !hubSeenEntry.contains(accumulatorSlotKey.getSlotKey().get().toBytes()))
             .forEach(
                 accumulatorSlotKey ->
                     alert(
                         () ->
                             LOG.warn(
-                                "hub account {} slot key {} is missing from accumulator modifications",
+                                "block {} hub account {} slot key {} is missing from accumulator modifications",
+                                blockHeader.getNumber(),
                                 accumulatorEntry.getKey().toHexString(),
                                 accumulatorSlotKey
                                     .getSlotKey()
@@ -191,6 +196,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
   @VisibleForTesting
   void compareAndWarnAccount(
+      final BlockHeader blockHeader,
       final Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
       final Set<Address> hubAddresses) {
     // assert everything in hub seen addresses is in accumulator
@@ -201,7 +207,8 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                 alert(
                     () ->
                         LOG.warn(
-                            "hub seen account {} is missing from accumulator updated addresses",
+                            "block {} hub seen account {} is missing from accumulator updated addresses",
+                            blockHeader.getNumber(),
                             hubAddress.toHexString())));
 
     // assert everything in accumulator is in hub seen addresses
@@ -212,7 +219,8 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                 alert(
                     () ->
                         LOG.warn(
-                            "accumulator address to update {} is missing from hub seen accounts",
+                            "block {} accumulator address to update {} is missing from hub seen accounts",
+                            blockHeader.getNumber(),
                             accumulatorAddress.toHexString())));
   }
 

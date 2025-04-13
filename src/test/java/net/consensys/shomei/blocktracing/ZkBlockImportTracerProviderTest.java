@@ -15,6 +15,7 @@
 package net.consensys.shomei.blocktracing;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -31,11 +32,13 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
+import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 import org.junit.jupiter.api.Test;
 
 public class ZkBlockImportTracerProviderTest {
   private ZkBlockImportTracerProvider comparator = spy(new ZkBlockImportTracerProvider());
+  private BlockHeader mockHeader = mock(BlockHeader.class);
 
   @Test
   void testMatchingAccounts() {
@@ -49,7 +52,7 @@ public class ZkBlockImportTracerProviderTest {
 
     Set<Address> hubAccountsSeen = Set.of(a, b);
 
-    comparator.compareAndWarnAccount(accountToUpdate, hubAccountsSeen);
+    comparator.compareAndWarnAccount(mockHeader, accountToUpdate, hubAccountsSeen);
     verify(comparator, never()).alert(any());
   }
 
@@ -66,7 +69,7 @@ public class ZkBlockImportTracerProviderTest {
 
     Set<Address> hubAccountsSeen = Set.of(a, b, c);
 
-    comparator.compareAndWarnAccount(accountToUpdate, hubAccountsSeen);
+    comparator.compareAndWarnAccount(mockHeader, accountToUpdate, hubAccountsSeen);
     verify(comparator, times(1)).alert(any());
   }
 
@@ -84,7 +87,7 @@ public class ZkBlockImportTracerProviderTest {
 
     Set<Address> hubAccountsSeen = Set.of(a, b);
 
-    comparator.compareAndWarnAccount(accountToUpdate, hubAccountsSeen);
+    comparator.compareAndWarnAccount(mockHeader, accountToUpdate, hubAccountsSeen);
     verify(comparator, times(1)).alert(any());
   }
 
@@ -100,7 +103,7 @@ public class ZkBlockImportTracerProviderTest {
         Map.of(addr, Map.of(slotKey, logTuple));
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
 
-    comparator.compareAndWarnStorage(storageToUpdate, hubSeenStorage);
+    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, never()).alert(any());
@@ -117,7 +120,7 @@ public class ZkBlockImportTracerProviderTest {
         Map.of(addr, Map.of(slotKey, logTuple));
     Map<Address, Set<Bytes32>> hubSeenStorage = Collections.emptyMap();
 
-    comparator.compareAndWarnStorage(storageToUpdate, hubSeenStorage);
+    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
@@ -133,7 +136,7 @@ public class ZkBlockImportTracerProviderTest {
         Collections.emptyMap();
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
 
-    comparator.compareAndWarnStorage(storageToUpdate, hubSeenStorage);
+    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
@@ -153,7 +156,7 @@ public class ZkBlockImportTracerProviderTest {
         Map.of(addr, Map.of(slotKey, logTuple, slotKey2, logTuple));
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
 
-    comparator.compareAndWarnStorage(storageToUpdate, hubSeenStorage);
+    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
@@ -173,7 +176,7 @@ public class ZkBlockImportTracerProviderTest {
         Map.of(addr, Map.of(slotKey, logTuple));
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes, slot2Bytes));
 
-    comparator.compareAndWarnStorage(storageToUpdate, hubSeenStorage);
+    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
