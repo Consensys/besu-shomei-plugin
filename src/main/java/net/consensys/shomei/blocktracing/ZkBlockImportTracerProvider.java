@@ -18,12 +18,22 @@ import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.zktracer.ZkTracer;
 
 import java.math.BigInteger;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.AccountValue;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BlockImportTracerProvider;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLog.LogTuple;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,18 +49,22 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   private final AtomicReference<HeaderTracerTuple> currentTracer = new AtomicReference<>();
 
   /** package private for testing. */
+  @VisibleForTesting
   ZkBlockImportTracerProvider() {}
 
   @Override
-  public BlockAwareOperationTracer getBlockImportTracer(final BlockHeader processableBlockHeader) {
+  public BlockAwareOperationTracer getBlockImportTracer(final BlockHeader blockHeader) {
     // TODO: if we are just tracking storage, do we need an explicit L1L2Bridge config or chain id?
     //       empty bridge and linea mainnet chain id for now
     ZkTracer zkTracer =
         new ZkTracer(LineaL1L2BridgeSharedConfiguration.EMPTY, BigInteger.valueOf(59144L));
 
+    // TODO: debug level
+    LOG.info("returning zkTracer for {}", headerLogString(blockHeader));
+
     zkTracer.traceStartConflation(1L);
-    zkTracer.traceStartBlock(processableBlockHeader, processableBlockHeader.getCoinbase());
-    currentTracer.set(new HeaderTracerTuple(processableBlockHeader, zkTracer));
+    zkTracer.traceStartBlock(blockHeader, blockHeader.getCoinbase());
+    currentTracer.set(new HeaderTracerTuple(blockHeader, zkTracer));
 
     return zkTracer;
   }
@@ -83,11 +97,117 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
     // TODO: need latest zktracer:arithmetization to make this comparison:
 
-    //    // use tracer state to compare besu accumulator:
-    //    var state = current.get().zkTracer.getHub().getBlockStack();
-    //    var storageToUpdate = accumulator.getStorageToUpdate();
-    //    var accountsToUpdate = accumulator.getAccountsToUpdate();
+    // use tracer state to compare besu accumulator:
+    var currentBlockStack = current.get().zkTracer.getHub().blockStack().currentBlock();
+    var storageToUpdate = accumulator.getStorageToUpdate();
+    var accountsToUpdate = accumulator.getAccountsToUpdate();
 
+    compareAndWarnAccount(accountsToUpdate, currentBlockStack.addressesSeenByHub());
+
+    compareAndWarnStorage(storageToUpdate, currentBlockStack.storagesSeenByHub());
+
+    LOG.info("completed comparison for {}", headerLogString(blockHeader));
+  }
+
+  @VisibleForTesting
+  void compareAndWarnStorage(
+      final Map<Address, ? extends Map<StorageSlotKey, ? extends LogTuple<UInt256>>>
+          storageToUpdate,
+      final Map<Address, Set<Bytes32>> hubSeenStorage) {
+
+    // check everything in hub seen storage is in accumulator:
+    for (var hubStorageEntry : hubSeenStorage.entrySet()) {
+      var accumulatorEntry = storageToUpdate.get(hubStorageEntry.getKey());
+      if (accumulatorEntry == null) {
+        alert(
+            () ->
+                LOG.warn(
+                    "hub account {} in missing in accumulator storage slot modifications",
+                    hubStorageEntry.getKey().toHexString()));
+      } else {
+        hubStorageEntry.getValue().stream()
+            .filter(
+                hubSlotKey ->
+                    !accumulatorEntry.containsKey(
+                        new StorageSlotKey(UInt256.fromBytes(hubSlotKey))))
+            .forEach(
+                hubSlotKey ->
+                    alert(
+                        () ->
+                            LOG.warn(
+                                "hub account {} slot key {} is missing from accumulator modifications",
+                                hubStorageEntry.getKey().toHexString(),
+                                hubSlotKey.toHexString())));
+      }
+    }
+
+    // assert everything in accumulator is in hub seen storage
+    for (var accumulatorEntry : storageToUpdate.entrySet()) {
+      var hubSeenEntry = hubSeenStorage.get(accumulatorEntry.getKey());
+      if (hubSeenEntry == null) {
+        alert(
+            () ->
+                LOG.warn(
+                    "accumulator storage account {} is missing from hub seen storage modifications",
+                    accumulatorEntry.getKey().toHexString()));
+      } else {
+        accumulatorEntry.getValue().keySet().stream()
+            .filter(
+                accumulatorSlotKey ->
+                    !hubSeenEntry.contains(
+                        accumulatorSlotKey.getSlotKey().orElse(UInt256.MAX_VALUE)))
+            .forEach(
+                accumulatorSlotKey ->
+                    alert(
+                        () ->
+                            LOG.warn(
+                                "hub account {} slot key {} is missing from accumulator modifications",
+                                accumulatorEntry.getKey().toHexString(),
+                                accumulatorSlotKey
+                                    .getSlotKey()
+                                    .map(Bytes::toHexString)
+                                    .orElse(
+                                        "hash::"
+                                            + accumulatorSlotKey.getSlotHash().toHexString()))));
+      }
+    }
+  }
+
+  /**
+   * here just to make simpler test assertions.
+   *
+   * @param logLambda runnable that logs.
+   */
+  @VisibleForTesting
+  void alert(Runnable logLambda) {
+    logLambda.run();
+  }
+
+  @VisibleForTesting
+  void compareAndWarnAccount(
+      final Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
+      final Set<Address> hubAddresses) {
+    // assert everything in hub seen addresses is in accumulator
+    hubAddresses.stream()
+        .filter(hubAddress -> !accountsToUpdate.containsKey(hubAddress))
+        .forEach(
+            hubAddress ->
+                alert(
+                    () ->
+                        LOG.warn(
+                            "hub seen account {} is missing from accumulator updated addresses",
+                            hubAddress.toHexString())));
+
+    // assert everything in accumulator is in hub seen addresses
+    accountsToUpdate.keySet().stream()
+        .filter(accumulatorAddress -> !hubAddresses.contains(accumulatorAddress))
+        .forEach(
+            accumulatorAddress ->
+                alert(
+                    () ->
+                        LOG.warn(
+                            "accumulator address to update {} is missing from hub seen accounts",
+                            accumulatorAddress.toHexString())));
   }
 
   public String headerLogString(BlockHeader header) {
