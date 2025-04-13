@@ -86,6 +86,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   public void compareWithTrace(
       final BlockHeader blockHeader, final TrieLogAccumulator accumulator) {
     var current = getCurrentTracerTuple();
+
+    // bail if genesis, we do not trace genesis block
+    if (blockHeader.getNumber() == 0) {
+      return;
+    }
+
     if (!current
         .filter(t -> t.header().getBlockHash().equals(blockHeader.getBlockHash()))
         .isPresent()) {
