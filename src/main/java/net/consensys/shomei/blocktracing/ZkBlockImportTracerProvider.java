@@ -62,8 +62,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     // TODO: debug level
     LOG.info("returning zkTracer for {}", headerLogString(blockHeader));
 
-    zkTracer.traceStartConflation(1L);
-    zkTracer.traceStartBlock(blockHeader, blockHeader.getCoinbase());
+    // TODO: do we need conflation if we are only tracing 1 block?
+    // zkTracer.traceStartConflation(1L);
+
+    // leave it to abstract block processor to start/end tracing:
+    // zkTracer.traceStartBlock(blockHeader, blockHeader.getCoinbase());
+
     currentTracer.set(new HeaderTracerTuple(blockHeader, zkTracer));
 
     return zkTracer;
@@ -85,32 +89,46 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
    */
   public void compareWithTrace(
       final BlockHeader blockHeader, final TrieLogAccumulator accumulator) {
-    var current = getCurrentTracerTuple();
 
     // bail if genesis, we do not trace genesis block
     if (blockHeader.getNumber() == 0) {
       return;
     }
 
-    if (!current
-        .filter(t -> t.header().getBlockHash().equals(blockHeader.getBlockHash()))
-        .isPresent()) {
+    var current =
+        getCurrentTracerTuple()
+            .filter(t -> t.header().getBlockHash().equals(blockHeader.getBlockHash()));
+
+    if (current.isEmpty()) {
       LOG.warn(
-          "Trace not found while attempting to filter block {}.  current trace block {}",
+          "Trace not found while attempting to compare block {}.  current trace block {}",
           headerLogString(blockHeader),
           current.map(t -> t.header).map(this::headerLogString).orElse("empty"));
+      return;
     }
 
-    // TODO: need latest zktracer:arithmetization to make this comparison:
+    var zkTracerTuple = current.get();
+
+    // TODO: remove me when upstream besu endsBlock tracing in import ; hacky hacky workaround
+    // current.ifPresent(
+    //     cur ->
+    //         blockchainService
+    //             .getBlockByHash(blockHeader.getBlockHash())
+    //             .ifPresent(block -> cur.zkTracer.traceEndBlock(blockHeader, null)));
+
+    // TODO: do we need conflation if we are only tracing one block?
+    // zkTracerTuple.zkTracer.traceEndConflation(accumulator);
 
     // use tracer state to compare besu accumulator:
-    var currentBlockStack = current.get().zkTracer.getHub().blockStack().currentBlock();
+    var currentBlockStack = zkTracerTuple.zkTracer.getHub().blockStack().currentBlock();
+    var hubAccountsSeen = currentBlockStack.addressesSeenByHub();
+    var hubStorageSeen = currentBlockStack.storagesSeenByHub();
     var storageToUpdate = accumulator.getStorageToUpdate();
     var accountsToUpdate = accumulator.getAccountsToUpdate();
 
-    compareAndWarnAccount(blockHeader, accountsToUpdate, currentBlockStack.addressesSeenByHub());
+    compareAndWarnAccount(blockHeader, accountsToUpdate, hubAccountsSeen);
 
-    compareAndWarnStorage(blockHeader, storageToUpdate, currentBlockStack.storagesSeenByHub());
+    compareAndWarnStorage(blockHeader, storageToUpdate, hubStorageSeen);
 
     LOG.info("completed comparison for {}", headerLogString(blockHeader));
   }
@@ -121,6 +139,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
       final Map<Address, ? extends Map<StorageSlotKey, ? extends LogTuple<UInt256>>>
           storageToUpdate,
       final Map<Address, Set<Bytes32>> hubSeenStorage) {
+
+    LOG.info(
+        "Block {} comparing hubSeen size {} to accumulator storage map size {}",
+        blockHeader.getNumber(),
+        hubSeenStorage.size(),
+        storageToUpdate.size());
 
     // check everything in hub seen storage is in accumulator:
     for (var hubStorageEntry : hubSeenStorage.entrySet()) {
@@ -184,23 +208,20 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     }
   }
 
-  /**
-   * here just to make simpler test assertions.
-   *
-   * @param logLambda runnable that logs.
-   */
-  @VisibleForTesting
-  void alert(Runnable logLambda) {
-    logLambda.run();
-  }
-
   @VisibleForTesting
   void compareAndWarnAccount(
       final BlockHeader blockHeader,
       final Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
-      final Set<Address> hubAddresses) {
+      final Set<Address> hubSeenAddresses) {
+
+    LOG.info(
+        "Block {} comparing hubSeen size {} to accumulator account map size {}",
+        blockHeader.getNumber(),
+        hubSeenAddresses.size(),
+        accountsToUpdate.size());
+
     // assert everything in hub seen addresses is in accumulator
-    hubAddresses.stream()
+    hubSeenAddresses.stream()
         .filter(hubAddress -> !accountsToUpdate.containsKey(hubAddress))
         .forEach(
             hubAddress ->
@@ -213,7 +234,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
     // assert everything in accumulator is in hub seen addresses
     accountsToUpdate.keySet().stream()
-        .filter(accumulatorAddress -> !hubAddresses.contains(accumulatorAddress))
+        .filter(accumulatorAddress -> !hubSeenAddresses.contains(accumulatorAddress))
         .forEach(
             accumulatorAddress ->
                 alert(
@@ -222,6 +243,16 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                             "block {} accumulator address to update {} is missing from hub seen accounts",
                             blockHeader.getNumber(),
                             accumulatorAddress.toHexString())));
+  }
+
+  /**
+   * here just to make simpler test assertions.
+   *
+   * @param logLambda runnable that logs.
+   */
+  @VisibleForTesting
+  void alert(Runnable logLambda) {
+    logLambda.run();
   }
 
   public String headerLogString(BlockHeader header) {
