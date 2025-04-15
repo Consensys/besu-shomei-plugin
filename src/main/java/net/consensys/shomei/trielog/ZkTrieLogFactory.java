@@ -47,16 +47,18 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogFactory.class);
   private final ShomeiContext ctx;
+  private final int comparisonFeatureMask;
 
   public ZkTrieLogFactory(ShomeiContext ctx) {
     this.ctx = ctx;
+    comparisonFeatureMask = ctx.getCliOptions().zkTraceComparisonMask;
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public TrieLog create(final TrieLogAccumulator accumulator, final BlockHeader blockHeader) {
 
-    if (ctx.getCliOptions().enableZkTraceComparison) {
+    if (comparisonFeatureMask > 0) {
       LOG.debug(
           "comparing ZkTrieLog with ZkTracer for block {}:{}",
           blockHeader.getNumber(),

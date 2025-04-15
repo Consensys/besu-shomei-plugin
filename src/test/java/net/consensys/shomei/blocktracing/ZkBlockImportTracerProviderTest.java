@@ -21,6 +21,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import net.consensys.shomei.cli.ShomeiCliOptions;
+import net.consensys.shomei.context.TestShomeiContext;
 import net.consensys.shomei.trielog.TrieLogValue;
 import net.consensys.shomei.trielog.ZkAccountValue;
 
@@ -39,12 +41,22 @@ import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class ZkBlockImportTracerProviderTest {
-  private ZkBlockImportTracerProvider comparator =
-      spy(new ZkBlockImportTracerProvider(() -> Optional.of(BigInteger.ONE)));
+  ShomeiCliOptions testOpts = new ShomeiCliOptions();
+  TestShomeiContext testContext;
+  private ZkBlockImportTracerProvider comparator;
   private BlockHeader mockHeader = mock(BlockHeader.class);
+
+  @BeforeEach
+  void setup() {
+    testContext = TestShomeiContext.create().setCliOptions(testOpts);
+    testOpts.zkTraceComparisonMask = 15;
+    comparator =
+        spy(new ZkBlockImportTracerProvider(testContext, () -> Optional.of(BigInteger.ONE)));
+  }
 
   @Test
   void testMatchingAccounts() {

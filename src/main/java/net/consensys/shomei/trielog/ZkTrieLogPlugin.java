@@ -68,7 +68,10 @@ public class ZkTrieLogPlugin implements BesuPlugin {
             .map(svc -> Suppliers.memoize(svc::getChainId))
             .orElseThrow(() -> new RuntimeException("No BlockchainService available"));
 
-    ZkBlockImportTracerProvider tracerProvider = new ZkBlockImportTracerProvider(chainIdSupplier);
+    // associated worldstate updater... get from Hub???? wtf.
+
+    ZkBlockImportTracerProvider tracerProvider =
+        new ZkBlockImportTracerProvider(ctx, chainIdSupplier);
 
     if (ctx.getCliOptions().enableZkTracer) {
       ctx.setBlockImportTraceProvider(tracerProvider);

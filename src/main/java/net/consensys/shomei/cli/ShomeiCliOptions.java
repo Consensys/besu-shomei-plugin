@@ -14,6 +14,8 @@
  */
 package net.consensys.shomei.cli;
 
+import java.util.EnumSet;
+
 import com.google.common.base.MoreObjects;
 import picocli.CommandLine;
 
@@ -36,8 +38,8 @@ public class ShomeiCliOptions {
 
   public static final String OPTION_SHOMEI_ENABLE_ZKTRACER = "--plugin-shomei-enable-zktracer";
 
-  public static final String OPTION_SHOMEI_ENABLE_ZKTRACE_COMPARISON =
-      "--plugin-shomei-enable-zktrace-comparison";
+  public static final String OPTION_SHOMEI_ZKTRACE_COMPARISON_MODE =
+      "--plugin-shomei-zktrace-comparison-mode";
 
   @CommandLine.Option(
       names = {OPTION_SHOMEI_HTTP_HOST},
@@ -63,13 +65,61 @@ public class ShomeiCliOptions {
       description = "Use zkTracer on block import")
   public Boolean enableZkTracer = DEFAULT_ENABLE_ZKTRACER;
 
+  /*
+   * use bitmasking to enable/disable comparsion features
+   */
+  public enum ZkTraceComparisonFeature {
+    MISMATCH_LOGGING(1),
+    HUB_TO_ACCUMULATOR(2),
+    ACCUMULATOR_TO_HUB(4),
+    DECORATE_FROM_HUB(8);
+
+    private final int bit;
+
+    ZkTraceComparisonFeature(int bit) {
+      this.bit = bit;
+    }
+
+    public int getBit() {
+      return bit;
+    }
+
+    public static EnumSet<ZkTraceComparisonFeature> fromMask(int mask) {
+      EnumSet<ZkTraceComparisonFeature> set = EnumSet.noneOf(ZkTraceComparisonFeature.class);
+      for (ZkTraceComparisonFeature feature : values()) {
+        if ((mask & feature.bit) != 0) {
+          set.add(feature);
+        }
+      }
+      return set;
+    }
+
+    public static int toMask(EnumSet<ZkTraceComparisonFeature> features) {
+      int mask = 0;
+      for (ZkTraceComparisonFeature feature : features) {
+        mask |= feature.bit;
+      }
+      return mask;
+    }
+
+    public static boolean isEnabled(int mask, ZkTraceComparisonFeature feature) {
+      return (mask & feature.bit) != 0;
+    }
+  }
+
   @CommandLine.Option(
-      names = {OPTION_SHOMEI_ENABLE_ZKTRACE_COMPARISON},
-      hidden = true,
-      defaultValue = "false",
-      paramLabel = "<BOOLEAN>",
-      description = "Compare zkTracer state to accumulator on block import")
-  public Boolean enableZkTraceComparison = DEFAULT_ENABLE_ZKTRACE_COMPARISON;
+      names = {OPTION_SHOMEI_ZKTRACE_COMPARISON_MODE},
+      hidden = false,
+      paramLabel = "<MASK>",
+      description = {
+        "Bitmask to enable zkTracer comparison features.",
+        "1 = LOGGING",
+        "2 = compare HUB→ACCUMULATOR",
+        "4 = compare ACCUMULATOR→HUB",
+        "8 = DECORATE ACCUMULATOR FROM HUB.",
+        "Add values (e.g., 3 = LOGGING + HUB→ACC, default no comparison enabled)."
+      })
+  public int zkTraceComparisonMask = 0;
 
   public static ShomeiCliOptions create() {
     return INSTANCE;
@@ -78,10 +128,10 @@ public class ShomeiCliOptions {
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("shomeiHttpHost", shomeiHttpHost)
-        .add("shomeiHttpPort", shomeiHttpPort)
-        .add("shomeiEnableZkTracer", enableZkTracer)
-        .add("shomeiEnableZkTraceComparison", enableZkTraceComparison)
+        .add("shomei-http-host", shomeiHttpHost)
+        .add("shomei-http-port", shomeiHttpPort)
+        .add("shomei-enable-zktracer", enableZkTracer)
+        .add("shomei-zktrace-comparison-mode", zkTraceComparisonMask)
         .toString();
   }
 }

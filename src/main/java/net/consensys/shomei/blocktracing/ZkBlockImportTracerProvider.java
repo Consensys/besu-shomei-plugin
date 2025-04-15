@@ -14,8 +14,16 @@
  */
 package net.consensys.shomei.blocktracing;
 
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.ACCUMULATOR_TO_HUB;
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.DECORATE_FROM_HUB;
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.HUB_TO_ACCUMULATOR;
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.MISMATCH_LOGGING;
+
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.shomei.cli.ShomeiCliOptions;
+import net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature;
+import net.consensys.shomei.context.ShomeiContext;
 
 import java.math.BigInteger;
 import java.util.Map;
@@ -49,9 +57,21 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
   private final AtomicReference<HeaderTracerTuple> currentTracer = new AtomicReference<>();
   private final Supplier<Optional<BigInteger>> chainIdSupplier;
+  private final int comparisonFeatureMask;
 
-  public ZkBlockImportTracerProvider(Supplier<Optional<BigInteger>> chainIdSupplier) {
+  public ZkBlockImportTracerProvider(
+      ShomeiContext ctx, Supplier<Optional<BigInteger>> chainIdSupplier) {
+    this.comparisonFeatureMask = ctx.getCliOptions().zkTraceComparisonMask;
     this.chainIdSupplier = chainIdSupplier;
+  }
+
+  private boolean isEnabled(ZkTraceComparisonFeature... features) {
+    for (var feature : features) {
+      if (ShomeiCliOptions.ZkTraceComparisonFeature.isEnabled(comparisonFeatureMask, feature)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override
@@ -130,69 +150,75 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
         storageToUpdate.size());
 
     // First pass: check hubSeen -> storageToUpdate
-    hubSeenStorage.forEach(
-        (address, hubSlots) -> {
-          var accumulatorSlots = storageToUpdate.get(address);
-          if (accumulatorSlots == null) {
-            alert(
-                () ->
-                    LOG.warn(
-                        "block {} hub account {} is missing in accumulator storage slot modifications",
-                        blockHeader.getNumber(),
-                        address.toHexString()));
-          } else {
-            hubSlots.stream()
-                .filter(
-                    slot ->
-                        !accumulatorSlots.containsKey(new StorageSlotKey(UInt256.fromBytes(slot))))
-                .forEach(
-                    slot ->
-                        alert(
-                            () ->
-                                LOG.warn(
-                                    "block {} hub account {} slot key {} is missing from accumulator modifications",
-                                    blockHeader.getNumber(),
-                                    address.toHexString(),
-                                    slot.toHexString())));
-          }
-        });
+    if (isEnabled(HUB_TO_ACCUMULATOR, DECORATE_FROM_HUB)) {
+      hubSeenStorage.forEach(
+          (address, hubSlots) -> {
+            var accumulatorSlots = storageToUpdate.get(address);
+            if (accumulatorSlots == null) {
+              alert(
+                  () ->
+                      LOG.warn(
+                          "block {} hub account {} is missing in accumulator storage slot modifications",
+                          blockHeader.getNumber(),
+                          address.toHexString()));
+            } else {
+              hubSlots.stream()
+                  .filter(
+                      slot ->
+                          !accumulatorSlots.containsKey(
+                              new StorageSlotKey(UInt256.fromBytes(slot))))
+                  .forEach(
+                      slot ->
+                          alert(
+                              () ->
+                                  LOG.warn(
+                                      "block {} hub account {} slot key {} is missing from accumulator modifications",
+                                      blockHeader.getNumber(),
+                                      address.toHexString(),
+                                      slot.toHexString())));
+            }
+          });
+    }
 
     // Second pass: check storageToUpdate -> hubSeen
-    storageToUpdate.forEach(
-        (address, accumulatorSlots) -> {
-          var hubSlots = hubSeenStorage.get(address);
-          if (hubSlots == null) {
-            alert(
-                () ->
-                    LOG.warn(
-                        "block {} accumulator storage account {} is missing from hub seen storage modifications",
-                        blockHeader.getNumber(),
-                        address.toHexString()));
-          } else {
-            accumulatorSlots.entrySet().stream()
-                .filter(
-                    slotEntry ->
-                        slotEntry.getKey().getSlotKey().isPresent()
-                            && !hubSlots.contains(slotEntry.getKey().getSlotKey().get().toBytes()))
-                .forEach(
-                    slotEntry ->
-                        alert(
-                            () ->
-                                LOG.warn(
-                                    "block {} hub account {} slot key {} value pre {} post {} is missing from accumulator modifications",
-                                    blockHeader.getNumber(),
-                                    address.toHexString(),
-                                    slotEntry
-                                        .getKey()
-                                        .getSlotKey()
-                                        .map(Bytes::toHexString)
-                                        .orElse(
-                                            "hash::"
-                                                + slotEntry.getKey().getSlotHash().toHexString()),
-                                    slotEntry.getValue().getUpdated().toShortHexString(),
-                                    slotEntry.getValue().getPrior().toShortHexString())));
-          }
-        });
+    if (isEnabled(ACCUMULATOR_TO_HUB)) {
+      storageToUpdate.forEach(
+          (address, accumulatorSlots) -> {
+            var hubSlots = hubSeenStorage.get(address);
+            if (hubSlots == null) {
+              alert(
+                  () ->
+                      LOG.warn(
+                          "block {} accumulator storage account {} is missing from hub seen storage modifications",
+                          blockHeader.getNumber(),
+                          address.toHexString()));
+            } else {
+              accumulatorSlots.entrySet().stream()
+                  .filter(
+                      slotEntry ->
+                          slotEntry.getKey().getSlotKey().isPresent()
+                              && !hubSlots.contains(
+                                  slotEntry.getKey().getSlotKey().get().toBytes()))
+                  .forEach(
+                      slotEntry ->
+                          alert(
+                              () ->
+                                  LOG.warn(
+                                      "block {} hub account {} slot key {} value pre {} post {} is missing from accumulator modifications",
+                                      blockHeader.getNumber(),
+                                      address.toHexString(),
+                                      slotEntry
+                                          .getKey()
+                                          .getSlotKey()
+                                          .map(Bytes::toHexString)
+                                          .orElse(
+                                              "hash::"
+                                                  + slotEntry.getKey().getSlotHash().toHexString()),
+                                      slotEntry.getValue().getUpdated().toShortHexString(),
+                                      slotEntry.getValue().getPrior().toShortHexString())));
+            }
+          });
+    }
   }
 
   @VisibleForTesting
@@ -238,7 +264,9 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
    */
   @VisibleForTesting
   void alert(Runnable logLambda) {
-    logLambda.run();
+    if (isEnabled(MISMATCH_LOGGING)) {
+      logLambda.run();
+    }
   }
 
   public String headerLogString(BlockHeader header) {
