@@ -169,23 +169,28 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                         blockHeader.getNumber(),
                         address.toHexString()));
           } else {
-            accumulatorSlots.keySet().stream()
+            accumulatorSlots.entrySet().stream()
                 .filter(
-                    slotKey ->
-                        slotKey.getSlotKey().isPresent()
-                            && !hubSlots.contains(slotKey.getSlotKey().get().toBytes()))
+                    slotEntry ->
+                        slotEntry.getKey().getSlotKey().isPresent()
+                            && !hubSlots.contains(slotEntry.getKey().getSlotKey().get().toBytes()))
                 .forEach(
-                    slotKey ->
+                    slotEntry ->
                         alert(
                             () ->
                                 LOG.warn(
-                                    "block {} hub account {} slot key {} is missing from accumulator modifications",
+                                    "block {} hub account {} slot key {} value pre {} post {} is missing from accumulator modifications",
                                     blockHeader.getNumber(),
                                     address.toHexString(),
-                                    slotKey
+                                    slotEntry
+                                        .getKey()
                                         .getSlotKey()
                                         .map(Bytes::toHexString)
-                                        .orElse("hash::" + slotKey.getSlotHash().toHexString()))));
+                                        .orElse(
+                                            "hash::"
+                                                + slotEntry.getKey().getSlotHash().toHexString()),
+                                    slotEntry.getValue().getUpdated().toShortHexString(),
+                                    slotEntry.getValue().getPrior().toShortHexString())));
           }
         });
   }
@@ -216,13 +221,14 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     // Accounts in accountsToUpdate but missing from hubSeen
     Sets.difference(accountsToUpdate.keySet(), hubSeenAddresses)
         .forEach(
-            accumulatorAddress ->
+            accountAddress ->
                 alert(
                     () ->
                         LOG.warn(
                             "block {} accumulator address to update {} is missing from hub seen accounts",
                             blockHeader.getNumber(),
-                            accumulatorAddress.toHexString())));
+                            accountAddress.toHexString(),
+                            accountDiffString(accountsToUpdate.get(accountAddress)))));
   }
 
   /**
@@ -237,6 +243,36 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
   public String headerLogString(BlockHeader header) {
     return header.getNumber() + " (" + header.getBlockHash() + ")";
+  }
+
+  public String accountDiffString(LogTuple<? extends AccountValue> accountTuple) {
+    // return a string with the account diff:
+    StringBuilder logBuilder = new StringBuilder("{");
+    var updated = accountTuple.getUpdated();
+    var prior = accountTuple.getPrior();
+    if (prior.getNonce() != updated.getNonce()) {
+      logBuilder.append(
+          String.format("_Nonce pre:%d;post:%d", prior.getNonce(), updated.getNonce()));
+    }
+    if (!prior.getBalance().equals(updated.getBalance())) {
+      logBuilder.append(
+          String.format(
+              "_Balance pre:%s;post:%s",
+              prior.getBalance().toShortHexString(), updated.getBalance().toShortHexString()));
+    }
+    if (!prior.getCodeHash().equals(updated.getCodeHash())) {
+      logBuilder.append(
+          String.format(
+              "_CodeHash pre:%s;post:%s",
+              prior.getCodeHash().toHexString(), updated.getCodeHash().toHexString()));
+    }
+    if (!prior.getStorageRoot().equals(updated.getStorageRoot())) {
+      logBuilder.append(
+          String.format(
+              "_StorageRoot pre:%s;post:%s",
+              prior.getStorageRoot().toHexString(), updated.getStorageRoot().toHexString()));
+    }
+    return logBuilder.append("}").toString();
   }
 
   public record HeaderTracerTuple(BlockHeader header, ZkTracer zkTracer) {}

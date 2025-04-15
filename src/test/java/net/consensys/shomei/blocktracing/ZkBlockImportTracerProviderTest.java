@@ -22,6 +22,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import net.consensys.shomei.trielog.TrieLogValue;
+import net.consensys.shomei.trielog.ZkAccountValue;
 
 import java.math.BigInteger;
 import java.util.Collections;
@@ -33,7 +34,9 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
+import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 import org.junit.jupiter.api.Test;
@@ -47,11 +50,11 @@ public class ZkBlockImportTracerProviderTest {
   void testMatchingAccounts() {
     Address a = Address.fromHexString("0x1");
     Address b = Address.fromHexString("0x2");
-
+    var mockAcctVal = new ZkAccountValue(0, Wei.ZERO, Hash.ZERO, Hash.EMPTY_TRIE_HASH);
     Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountToUpdate =
         Map.of(
-            a, new TrieLogValue<>(null, null, false),
-            b, new TrieLogValue<>(null, null, false));
+            a, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
+            b, new TrieLogValue<>(mockAcctVal, mockAcctVal, false));
 
     Set<Address> hubAccountsSeen = Set.of(a, b);
 
@@ -64,11 +67,12 @@ public class ZkBlockImportTracerProviderTest {
     Address a = Address.fromHexString("0x1");
     Address b = Address.fromHexString("0x2");
     Address c = Address.fromHexString("0x3");
+    var mockAcctVal = new ZkAccountValue(0, Wei.ZERO, Hash.ZERO, Hash.EMPTY_TRIE_HASH);
 
     Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountToUpdate =
         Map.of(
-            a, new TrieLogValue<>(null, null, false),
-            b, new TrieLogValue<>(null, null, false));
+            a, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
+            b, new TrieLogValue<>(mockAcctVal, mockAcctVal, false));
 
     Set<Address> hubAccountsSeen = Set.of(a, b, c);
 
@@ -81,12 +85,13 @@ public class ZkBlockImportTracerProviderTest {
     Address a = Address.fromHexString("0x1");
     Address b = Address.fromHexString("0x2");
     Address c = Address.fromHexString("0x3");
+    var mockAcctVal = new ZkAccountValue(0, Wei.ZERO, Hash.ZERO, Hash.EMPTY_TRIE_HASH);
 
     Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountToUpdate =
         Map.of(
-            a, new TrieLogValue<>(null, null, false),
-            b, new TrieLogValue<>(null, null, false),
-            c, new TrieLogValue<>(null, null, false));
+            a, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
+            b, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
+            c, new TrieLogValue<>(mockAcctVal, mockAcctVal, false));
 
     Set<Address> hubAccountsSeen = Set.of(a, b);
 
