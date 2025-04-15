@@ -36,10 +36,12 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.bytes.DelegatingBytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
+import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BlockImportTracerProvider;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
@@ -214,8 +216,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                                           .orElse(
                                               "hash::"
                                                   + slotEntry.getKey().getSlotHash().toHexString()),
-                                      slotEntry.getValue().getUpdated().toShortHexString(),
-                                      slotEntry.getValue().getPrior().toShortHexString())));
+                                      Optional.ofNullable(slotEntry.getValue().getUpdated())
+                                          .map(UInt256::toShortHexString)
+                                          .orElse("null"),
+                                      Optional.ofNullable(slotEntry.getValue().getPrior())
+                                          .map(UInt256::toShortHexString)
+                                          .orElse("null"))));
             }
           });
     }
@@ -278,27 +284,49 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     StringBuilder logBuilder = new StringBuilder("{");
     var updated = accountTuple.getUpdated();
     var prior = accountTuple.getPrior();
-    if (prior.getNonce() != updated.getNonce()) {
-      logBuilder.append(
-          String.format("_Nonce pre:%d;post:%d", prior.getNonce(), updated.getNonce()));
-    }
-    if (!prior.getBalance().equals(updated.getBalance())) {
-      logBuilder.append(
-          String.format(
-              "_Balance pre:%s;post:%s",
-              prior.getBalance().toShortHexString(), updated.getBalance().toShortHexString()));
-    }
-    if (!prior.getCodeHash().equals(updated.getCodeHash())) {
-      logBuilder.append(
-          String.format(
-              "_CodeHash pre:%s;post:%s",
-              prior.getCodeHash().toHexString(), updated.getCodeHash().toHexString()));
-    }
-    if (!prior.getStorageRoot().equals(updated.getStorageRoot())) {
-      logBuilder.append(
-          String.format(
-              "_StorageRoot pre:%s;post:%s",
-              prior.getStorageRoot().toHexString(), updated.getStorageRoot().toHexString()));
+    if (prior == null || updated == null) {
+      if (prior == null) {
+        logBuilder.append("prior is null");
+      }
+      if (updated == null) {
+        logBuilder.append("updated is null");
+      }
+    } else {
+      if (prior.getNonce() != updated.getNonce()) {
+        logBuilder.append(
+            String.format("_Nonce pre:%d;post:%d", prior.getNonce(), updated.getNonce()));
+      }
+      if (!prior.getBalance().equals(updated.getBalance())) {
+        logBuilder.append(
+            String.format(
+                "_Balance pre:%s;post:%s",
+                Optional.ofNullable(prior.getBalance()).map(Wei::toShortHexString).orElse("null"),
+                Optional.ofNullable(updated.getBalance())
+                    .map(Wei::toShortHexString)
+                    .orElse("null")));
+      }
+      if (!prior.getCodeHash().equals(updated.getCodeHash())) {
+        logBuilder.append(
+            String.format(
+                "_CodeHash pre:%s;post:%s",
+                Optional.ofNullable(prior.getCodeHash())
+                    .map(DelegatingBytes::toHexString)
+                    .orElse("null"),
+                Optional.ofNullable(updated.getCodeHash())
+                    .map(DelegatingBytes::toHexString)
+                    .orElse("null")));
+      }
+      if (!prior.getStorageRoot().equals(updated.getStorageRoot())) {
+        logBuilder.append(
+            String.format(
+                "_StorageRoot pre:%s;post:%s",
+                Optional.ofNullable(prior.getStorageRoot())
+                    .map(DelegatingBytes::toHexString)
+                    .orElse("null"),
+                Optional.ofNullable(updated.getStorageRoot())
+                    .map(DelegatingBytes::toHexString)
+                    .orElse("null")));
+      }
     }
     return logBuilder.append("}").toString();
   }
