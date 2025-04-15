@@ -225,7 +225,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                 alert(
                     () ->
                         LOG.warn(
-                            "block {} accumulator address to update {} is missing from hub seen accounts",
+                            "block {} accumulator address to update {}is missing from hub seen accounts, diff: {} ",
                             blockHeader.getNumber(),
                             accountAddress.toHexString(),
                             accountDiffString(accountsToUpdate.get(accountAddress)))));
