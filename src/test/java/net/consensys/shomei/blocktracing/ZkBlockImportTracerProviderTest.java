@@ -23,6 +23,7 @@ import static org.mockito.Mockito.verify;
 
 import net.consensys.shomei.trielog.TrieLogValue;
 
+import java.math.BigInteger;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -37,7 +38,8 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 import org.junit.jupiter.api.Test;
 
 public class ZkBlockImportTracerProviderTest {
-  private ZkBlockImportTracerProvider comparator = spy(new ZkBlockImportTracerProvider());
+  private ZkBlockImportTracerProvider comparator =
+      spy(new ZkBlockImportTracerProvider(BigInteger.ONE));
   private BlockHeader mockHeader = mock(BlockHeader.class);
 
   @Test

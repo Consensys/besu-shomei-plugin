@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -43,33 +44,21 @@ import org.slf4j.LoggerFactory;
  * consumed during trielog writing, prior to fetching another block import tracer.
  */
 public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
-  public static final ZkBlockImportTracerProvider INSTANCE = new ZkBlockImportTracerProvider();
   private static final Logger LOG = LoggerFactory.getLogger(ZkBlockImportTracerProvider.class);
 
   private final AtomicReference<HeaderTracerTuple> currentTracer = new AtomicReference<>();
+  private final BigInteger chainId;
 
-  /** package private for testing. */
-  @VisibleForTesting
-  ZkBlockImportTracerProvider() {}
+  public ZkBlockImportTracerProvider(BigInteger chainId) {
+    this.chainId = chainId;
+  }
 
   @Override
   public BlockAwareOperationTracer getBlockImportTracer(final BlockHeader blockHeader) {
-    // TODO: if we are just tracking storage, do we need an explicit L1L2Bridge config or chain id?
-    //       empty bridge and linea mainnet chain id for now
-    ZkTracer zkTracer =
-        new ZkTracer(LineaL1L2BridgeSharedConfiguration.EMPTY, BigInteger.valueOf(59144L));
+    ZkTracer zkTracer = new ZkTracer(LineaL1L2BridgeSharedConfiguration.EMPTY, chainId);
 
-    // TODO: debug level
-    LOG.info("returning zkTracer for {}", headerLogString(blockHeader));
-
-    // TODO: do we need conflation if we are only tracing 1 block?
-    // zkTracer.traceStartConflation(1L);
-
-    // leave it to abstract block processor to start/end tracing:
-    // zkTracer.traceStartBlock(blockHeader, blockHeader.getCoinbase());
-
+    LOG.debug("returning zkTracer for {}", headerLogString(blockHeader));
     currentTracer.set(new HeaderTracerTuple(blockHeader, zkTracer));
-
     return zkTracer;
   }
 
@@ -109,16 +98,6 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
     var zkTracerTuple = current.get();
 
-    // TODO: remove me when upstream besu endsBlock tracing in import ; hacky hacky workaround
-    // current.ifPresent(
-    //     cur ->
-    //         blockchainService
-    //             .getBlockByHash(blockHeader.getBlockHash())
-    //             .ifPresent(block -> cur.zkTracer.traceEndBlock(blockHeader, null)));
-
-    // TODO: do we need conflation if we are only tracing one block?
-    // zkTracerTuple.zkTracer.traceEndConflation(accumulator);
-
     // use tracer state to compare besu accumulator:
     var currentBlockStack = zkTracerTuple.zkTracer.getHub().blockStack().currentBlock();
     var hubAccountsSeen = currentBlockStack.addressesSeenByHub();
@@ -130,7 +109,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
     compareAndWarnStorage(blockHeader, storageToUpdate, hubStorageSeen);
 
-    LOG.info("completed comparison for {}", headerLogString(blockHeader));
+    LOG.debug("completed comparison for {}", headerLogString(blockHeader));
   }
 
   @VisibleForTesting
@@ -140,72 +119,71 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
           storageToUpdate,
       final Map<Address, Set<Bytes32>> hubSeenStorage) {
 
-    LOG.info(
+    LOG.debug(
         "Block {} comparing hubSeen size {} to accumulator storage map size {}",
         blockHeader.getNumber(),
         hubSeenStorage.size(),
         storageToUpdate.size());
 
-    // check everything in hub seen storage is in accumulator:
-    for (var hubStorageEntry : hubSeenStorage.entrySet()) {
-      var accumulatorEntry = storageToUpdate.get(hubStorageEntry.getKey());
-      if (accumulatorEntry == null) {
-        alert(
-            () ->
-                LOG.warn(
-                    "block {} hub account {} in missing in accumulator storage slot modifications",
-                    blockHeader.getNumber(),
-                    hubStorageEntry.getKey().toHexString()));
-      } else {
-        hubStorageEntry.getValue().stream()
-            .filter(
-                hubSlotKey ->
-                    !accumulatorEntry.containsKey(
-                        new StorageSlotKey(UInt256.fromBytes(hubSlotKey))))
-            .forEach(
-                hubSlotKey ->
-                    alert(
-                        () ->
-                            LOG.warn(
-                                "block {} hub account {} slot key {} is missing from accumulator modifications",
-                                blockHeader.getNumber(),
-                                hubStorageEntry.getKey().toHexString(),
-                                hubSlotKey.toHexString())));
-      }
-    }
+    // First pass: check hubSeen -> storageToUpdate
+    hubSeenStorage.forEach(
+        (address, hubSlots) -> {
+          var accumulatorSlots = storageToUpdate.get(address);
+          if (accumulatorSlots == null) {
+            alert(
+                () ->
+                    LOG.warn(
+                        "block {} hub account {} is missing in accumulator storage slot modifications",
+                        blockHeader.getNumber(),
+                        address.toHexString()));
+          } else {
+            hubSlots.stream()
+                .filter(
+                    slot ->
+                        !accumulatorSlots.containsKey(new StorageSlotKey(UInt256.fromBytes(slot))))
+                .forEach(
+                    slot ->
+                        alert(
+                            () ->
+                                LOG.warn(
+                                    "block {} hub account {} slot key {} is missing from accumulator modifications",
+                                    blockHeader.getNumber(),
+                                    address.toHexString(),
+                                    slot.toHexString())));
+          }
+        });
 
-    // assert everything in accumulator is in hub seen storage
-    for (var accumulatorEntry : storageToUpdate.entrySet()) {
-      var hubSeenEntry = hubSeenStorage.get(accumulatorEntry.getKey());
-      if (hubSeenEntry == null) {
-        alert(
-            () ->
-                LOG.warn(
-                    "block {} accumulator storage account {} is missing from hub seen storage modifications",
-                    blockHeader.getNumber(),
-                    accumulatorEntry.getKey().toHexString()));
-      } else {
-        accumulatorEntry.getValue().keySet().stream()
-            .filter(
-                accumulatorSlotKey ->
-                    accumulatorSlotKey.getSlotKey().isPresent()
-                        && !hubSeenEntry.contains(accumulatorSlotKey.getSlotKey().get().toBytes()))
-            .forEach(
-                accumulatorSlotKey ->
-                    alert(
-                        () ->
-                            LOG.warn(
-                                "block {} hub account {} slot key {} is missing from accumulator modifications",
-                                blockHeader.getNumber(),
-                                accumulatorEntry.getKey().toHexString(),
-                                accumulatorSlotKey
-                                    .getSlotKey()
-                                    .map(Bytes::toHexString)
-                                    .orElse(
-                                        "hash::"
-                                            + accumulatorSlotKey.getSlotHash().toHexString()))));
-      }
-    }
+    // Second pass: check storageToUpdate -> hubSeen
+    storageToUpdate.forEach(
+        (address, accumulatorSlots) -> {
+          var hubSlots = hubSeenStorage.get(address);
+          if (hubSlots == null) {
+            alert(
+                () ->
+                    LOG.warn(
+                        "block {} accumulator storage account {} is missing from hub seen storage modifications",
+                        blockHeader.getNumber(),
+                        address.toHexString()));
+          } else {
+            accumulatorSlots.keySet().stream()
+                .filter(
+                    slotKey ->
+                        slotKey.getSlotKey().isPresent()
+                            && !hubSlots.contains(slotKey.getSlotKey().get().toBytes()))
+                .forEach(
+                    slotKey ->
+                        alert(
+                            () ->
+                                LOG.warn(
+                                    "block {} hub account {} slot key {} is missing from accumulator modifications",
+                                    blockHeader.getNumber(),
+                                    address.toHexString(),
+                                    slotKey
+                                        .getSlotKey()
+                                        .map(Bytes::toHexString)
+                                        .orElse("hash::" + slotKey.getSlotHash().toHexString()))));
+          }
+        });
   }
 
   @VisibleForTesting
@@ -214,15 +192,14 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
       final Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
       final Set<Address> hubSeenAddresses) {
 
-    LOG.info(
+    LOG.debug(
         "Block {} comparing hubSeen size {} to accumulator account map size {}",
         blockHeader.getNumber(),
         hubSeenAddresses.size(),
         accountsToUpdate.size());
 
-    // assert everything in hub seen addresses is in accumulator
-    hubSeenAddresses.stream()
-        .filter(hubAddress -> !accountsToUpdate.containsKey(hubAddress))
+    // Accounts in hubSeen but missing from accountsToUpdate
+    Sets.difference(hubSeenAddresses, accountsToUpdate.keySet())
         .forEach(
             hubAddress ->
                 alert(
@@ -232,9 +209,8 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                             blockHeader.getNumber(),
                             hubAddress.toHexString())));
 
-    // assert everything in accumulator is in hub seen addresses
-    accountsToUpdate.keySet().stream()
-        .filter(accumulatorAddress -> !hubSeenAddresses.contains(accumulatorAddress))
+    // Accounts in accountsToUpdate but missing from hubSeen
+    Sets.difference(accountsToUpdate.keySet(), hubSeenAddresses)
         .forEach(
             accumulatorAddress ->
                 alert(

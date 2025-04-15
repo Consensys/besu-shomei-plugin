@@ -16,6 +16,8 @@ package net.consensys.shomei.trielog;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+import net.consensys.shomei.context.TestShomeiContext;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.Test;
 
 public class ZkTrieLogFactoryTests {
 
+  final TestShomeiContext testCtx = TestShomeiContext.create();
   final Address accountFixture = Address.fromHexString("0xdeadbeef");
   final PluginTrieLogLayer trieLogFixture = new PluginTrieLogLayer(Hash.ZERO);
 
@@ -60,7 +63,7 @@ public class ZkTrieLogFactoryTests {
 
   @Test
   public void testZkSlotKeyIsPresent() {
-    TrieLogFactory factory = new ZkTrieLogFactory();
+    TrieLogFactory factory = new ZkTrieLogFactory(testCtx);
     byte[] rlp = factory.serialize(trieLogFixture);
 
     TrieLog layer = factory.deserialize(rlp);
@@ -77,7 +80,7 @@ public class ZkTrieLogFactoryTests {
 
   @Test
   public void testZkSlotKeyZeroReadIsPresent() {
-    TrieLogFactory factory = new ZkTrieLogFactory();
+    TrieLogFactory factory = new ZkTrieLogFactory(testCtx);
     // add a read of an empty slot:
     trieLogFixture
         .getStorageChanges()
@@ -98,7 +101,7 @@ public class ZkTrieLogFactoryTests {
   @Test
   public void testZkAccountReadIsPresent() {
     // zkbesu test
-    final TrieLogFactory factory = new ZkTrieLogFactory();
+    final TrieLogFactory factory = new ZkTrieLogFactory(testCtx);
     final Address readAccount = Address.fromHexString("0xfeedf00d");
     final ZkAccountValue read = new ZkAccountValue(0, Wei.fromEth(1), Hash.EMPTY, Hash.EMPTY);
 

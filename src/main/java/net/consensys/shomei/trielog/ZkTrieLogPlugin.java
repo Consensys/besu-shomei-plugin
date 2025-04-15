@@ -15,14 +15,17 @@
 package net.consensys.shomei.trielog;
 
 import net.consensys.shomei.blocktracing.ZkBlockImportTracerProvider;
-import net.consensys.shomei.cli.ShomeiCliOptions;
+import net.consensys.shomei.context.ShomeiContext;
+import net.consensys.shomei.context.ShomeiContext.ShomeiContextImpl;
 
+import java.math.BigInteger;
 import java.util.Optional;
 
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BlockImportTracerProvider;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.slf4j.Logger;
@@ -32,7 +35,7 @@ import org.slf4j.LoggerFactory;
 public class ZkTrieLogPlugin implements BesuPlugin {
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogPlugin.class);
   private static final String NAME = "shomei";
-  private static ShomeiCliOptions options = ShomeiCliOptions.create();
+  private static ShomeiContext ctx = ShomeiContextImpl.getOrCreate();
 
   @Override
   public void register(final ServiceManager serviceManager) {
@@ -46,13 +49,26 @@ public class ZkTrieLogPlugin implements BesuPlugin {
           "Expecting a PicoCLI options to register CLI options with, but none found.");
     }
 
-    cmdlineOptions.get().addPicoCLIOptions(NAME, options);
+    cmdlineOptions.get().addPicoCLIOptions(NAME, ctx.getCliOptions());
+    ShomeiContext ctx = ShomeiContextImpl.getOrCreate();
+    ZkTrieLogFactory trieLogFactory = new ZkTrieLogFactory(ctx);
+    ZkTrieLogService trieLogService = new ZkTrieLogService(ctx);
+    ctx.setZkTrieLogService(trieLogService);
+    ctx.setZkTrieLogFactory(trieLogFactory);
 
-    serviceManager.addService(TrieLogService.class, ZkTrieLogService.getInstance());
+    serviceManager.addService(TrieLogService.class, trieLogService);
 
-    if (options.enableZkTracer) {
-      serviceManager.addService(
-          BlockImportTracerProvider.class, ZkBlockImportTracerProvider.INSTANCE);
+    var blockchainService = serviceManager.getService(BlockchainService.class);
+
+    BigInteger chainId =
+        blockchainService
+            .flatMap(BlockchainService::getChainId)
+            .orElseThrow(() -> new RuntimeException("Unable to set chain id for ZkTracer"));
+    ZkBlockImportTracerProvider tracerProvider = new ZkBlockImportTracerProvider(chainId);
+
+    if (ctx.getCliOptions().enableZkTracer) {
+      ctx.setBlockImportTraceProvider(tracerProvider);
+      serviceManager.addService(BlockImportTracerProvider.class, tracerProvider);
     }
   }
 

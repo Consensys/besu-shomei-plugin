@@ -71,8 +71,6 @@ public class ShomeiCliOptions {
       description = "Compare zkTracer state to accumulator on block import")
   public Boolean enableZkTraceComparison = DEFAULT_ENABLE_ZKTRACE_COMPARISON;
 
-  private ShomeiCliOptions() {}
-
   public static ShomeiCliOptions create() {
     return INSTANCE;
   }

@@ -14,7 +14,7 @@
  */
 package net.consensys.shomei.trielog;
 
-import net.consensys.shomei.cli.ShomeiCliOptions;
+import net.consensys.shomei.context.ShomeiContext;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,13 +26,10 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogProvider;
 
 public class ZkTrieLogService implements TrieLogService {
-  private static final ZkTrieLogService SINGLETON = new ZkTrieLogService();
-  private static final ShomeiCliOptions OPTIONS = ShomeiCliOptions.create();
+  private final ShomeiContext ctx;
 
-  ZkTrieLogService() {}
-
-  public static ZkTrieLogService getInstance() {
-    return SINGLETON;
+  public ZkTrieLogService(ShomeiContext ctx) {
+    this.ctx = ctx;
   }
 
   private final AtomicReference<ZkTrieLogObserver> observer = new AtomicReference<>();
@@ -42,15 +39,14 @@ public class ZkTrieLogService implements TrieLogService {
   public List<TrieLogEvent.TrieLogObserver> getObservers() {
     // initialize observer late so we are assured we have gotten pico cli params from besu
     if (observer.get() == null) {
-      observer.compareAndSet(
-          null, new ZkTrieLogObserver(OPTIONS.shomeiHttpHost, OPTIONS.shomeiHttpPort));
+      observer.compareAndSet(null, new ZkTrieLogObserver(ctx));
     }
     return List.of(observer.get());
   }
 
   @Override
   public Optional<TrieLogFactory> getTrieLogFactory() {
-    return Optional.of(ZkTrieLogFactory.INSTANCE);
+    return Optional.of(ctx.getZkTrieLogFactory());
   }
 
   @Override

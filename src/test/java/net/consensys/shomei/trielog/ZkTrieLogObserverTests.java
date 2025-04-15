@@ -18,6 +18,9 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import net.consensys.shomei.cli.ShomeiCliOptions;
+import net.consensys.shomei.context.TestShomeiContext;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -48,7 +51,10 @@ public class ZkTrieLogObserverTests {
   private static final String JSON_SUCCESS_RESPONSE =
       "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"accepted\"}";
 
-  private ZkTrieLogFactory zkTrieLogFactory = new ZkTrieLogFactory();
+  ShomeiCliOptions testOpts = new ShomeiCliOptions();
+  private TestShomeiContext testCtx = TestShomeiContext.create().setCliOptions(testOpts);
+
+  private ZkTrieLogFactory zkTrieLogFactory = new ZkTrieLogFactory(testCtx);
   private PluginTrieLogLayer trieLogFixture =
       new PluginTrieLogLayer(
           Hash.ZERO,
@@ -82,6 +88,7 @@ public class ZkTrieLogObserverTests {
                   rpcServicePort = server.actualPort();
                   context.completeNow();
                 }));
+    testCtx.setZkTrieLogFactory(new ZkTrieLogFactory(testCtx));
   }
 
   private void handleJsonRpcRequest(
@@ -116,7 +123,8 @@ public class ZkTrieLogObserverTests {
                 context.completeNow();
               });
         };
-    ZkTrieLogObserver observer = new ZkTrieLogObserver("localhost", rpcServicePort);
+    testOpts.shomeiHttpPort = rpcServicePort;
+    ZkTrieLogObserver observer = new ZkTrieLogObserver(testCtx);
     TrieLogEvent addEvent = new MockTrieLogEvent(trieLogFixture);
 
     observer
@@ -137,7 +145,7 @@ public class ZkTrieLogObserverTests {
 
   @Test
   public void assertSyncingHackWorks(VertxTestContext ctx, Vertx vertx) {
-    final ZkTrieLogObserver observer = new ZkTrieLogObserver("localhost", rpcServicePort);
+    final ZkTrieLogObserver observer = new ZkTrieLogObserver(testCtx);
 
     var mockEvent = new MockTrieLogEvent(trieLogFixture);
     var mockSyncStatus = mock(SyncStatus.class);

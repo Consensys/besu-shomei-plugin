@@ -14,9 +14,10 @@
  */
 package net.consensys.shomei.rpc;
 
+import net.consensys.shomei.context.ShomeiContext;
+import net.consensys.shomei.context.ShomeiContext.ShomeiContextImpl;
 import net.consensys.shomei.rpc.methods.ShomeiGetTrieLog;
 import net.consensys.shomei.rpc.methods.ShomeiGetTrieLogsByRange;
-import net.consensys.shomei.trielog.ZkTrieLogService;
 
 import java.util.List;
 
@@ -30,14 +31,12 @@ import org.slf4j.LoggerFactory;
 @AutoService(BesuPlugin.class)
 public class BesuShomeiRpcPlugin implements BesuPlugin {
   private static final Logger LOG = LoggerFactory.getLogger(BesuShomeiRpcPlugin.class);
+  private final ShomeiContext ctx = ShomeiContextImpl.getOrCreate();
 
   @Override
   public void register(final ServiceManager serviceManager) {
     LOG.debug("Registering RPC plugins");
-    var methods =
-        List.of(
-            new ShomeiGetTrieLogsByRange(ZkTrieLogService.getInstance()),
-            new ShomeiGetTrieLog(ZkTrieLogService.getInstance()));
+    var methods = List.of(new ShomeiGetTrieLogsByRange(ctx), new ShomeiGetTrieLog(ctx));
     serviceManager
         .getService(RpcEndpointService.class)
         .ifPresent(

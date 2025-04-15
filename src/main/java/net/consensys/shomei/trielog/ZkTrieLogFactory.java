@@ -14,8 +14,7 @@
  */
 package net.consensys.shomei.trielog;
 
-import net.consensys.shomei.blocktracing.ZkBlockImportTracerProvider;
-import net.consensys.shomei.cli.ShomeiCliOptions;
+import net.consensys.shomei.context.ShomeiContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,7 +25,6 @@ import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
@@ -47,25 +45,23 @@ import org.slf4j.LoggerFactory;
 
 public class ZkTrieLogFactory implements TrieLogFactory {
 
-  public static final ZkTrieLogFactory INSTANCE = new ZkTrieLogFactory();
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogFactory.class);
-  private static final ShomeiCliOptions OPTIONS = ShomeiCliOptions.create();
-  private static final ZkBlockImportTracerProvider TRACER_PROVIDER =
-      ZkBlockImportTracerProvider.INSTANCE;
+  private final ShomeiContext ctx;
 
-  @VisibleForTesting
-  ZkTrieLogFactory() {}
+  public ZkTrieLogFactory(ShomeiContext ctx) {
+    this.ctx = ctx;
+  }
 
   @Override
   @SuppressWarnings("unchecked")
   public TrieLog create(final TrieLogAccumulator accumulator, final BlockHeader blockHeader) {
 
-    if (OPTIONS.enableZkTraceComparison) {
+    if (ctx.getCliOptions().enableZkTraceComparison) {
       LOG.debug(
           "comparing ZkTrieLog with ZkTracer for block {}:{}",
           blockHeader.getNumber(),
           blockHeader.getBlockHash());
-      TRACER_PROVIDER.compareWithTrace(blockHeader, accumulator);
+      ctx.getBlockImportTraceProvider().compareWithTrace(blockHeader, accumulator);
     }
 
     var accountsToUpdate = accumulator.getAccountsToUpdate();
