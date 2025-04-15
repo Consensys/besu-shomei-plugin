@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.Sets;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -59,17 +60,19 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
   private final AtomicReference<HeaderTracerTuple> currentTracer = new AtomicReference<>();
   private final Supplier<Optional<BigInteger>> chainIdSupplier;
-  private final int comparisonFeatureMask;
+  private final Supplier<Integer> comparisonFeatureMask;
 
   public ZkBlockImportTracerProvider(
       ShomeiContext ctx, Supplier<Optional<BigInteger>> chainIdSupplier) {
-    this.comparisonFeatureMask = ctx.getCliOptions().zkTraceComparisonMask;
+    // defer to suppliers for late bound configs and services
     this.chainIdSupplier = chainIdSupplier;
+    this.comparisonFeatureMask = Suppliers.memoize(() -> ctx.getCliOptions().zkTraceComparisonMask);
   }
 
   private boolean isEnabled(ZkTraceComparisonFeature... features) {
     for (var feature : features) {
-      if (ShomeiCliOptions.ZkTraceComparisonFeature.isEnabled(comparisonFeatureMask, feature)) {
+      if (ShomeiCliOptions.ZkTraceComparisonFeature.isEnabled(
+          comparisonFeatureMask.get(), feature)) {
         return true;
       }
     }

@@ -24,7 +24,9 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
+import com.google.common.base.Suppliers;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
@@ -47,18 +49,19 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogFactory.class);
   private final ShomeiContext ctx;
-  private final int comparisonFeatureMask;
+  private final Supplier<Integer> comparisonFeatureMask;
 
   public ZkTrieLogFactory(ShomeiContext ctx) {
     this.ctx = ctx;
-    comparisonFeatureMask = ctx.getCliOptions().zkTraceComparisonMask;
+    // defer for late bound config
+    comparisonFeatureMask = Suppliers.memoize(() -> ctx.getCliOptions().zkTraceComparisonMask);
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public TrieLog create(final TrieLogAccumulator accumulator, final BlockHeader blockHeader) {
 
-    if (comparisonFeatureMask > 0) {
+    if (comparisonFeatureMask.get() > 0) {
       LOG.debug(
           "comparing ZkTrieLog with ZkTracer for block {}:{}",
           blockHeader.getNumber(),
