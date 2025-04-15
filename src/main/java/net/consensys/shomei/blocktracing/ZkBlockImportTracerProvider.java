@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
@@ -47,15 +48,18 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ZkBlockImportTracerProvider.class);
 
   private final AtomicReference<HeaderTracerTuple> currentTracer = new AtomicReference<>();
-  private final BigInteger chainId;
+  private final Supplier<Optional<BigInteger>> chainIdSupplier;
 
-  public ZkBlockImportTracerProvider(BigInteger chainId) {
-    this.chainId = chainId;
+  public ZkBlockImportTracerProvider(Supplier<Optional<BigInteger>> chainIdSupplier) {
+    this.chainIdSupplier = chainIdSupplier;
   }
 
   @Override
   public BlockAwareOperationTracer getBlockImportTracer(final BlockHeader blockHeader) {
-    ZkTracer zkTracer = new ZkTracer(LineaL1L2BridgeSharedConfiguration.EMPTY, chainId);
+    ZkTracer zkTracer =
+        new ZkTracer(
+            LineaL1L2BridgeSharedConfiguration.EMPTY,
+            chainIdSupplier.get().orElseThrow(() -> new RuntimeException("Chain Id unavailable")));
 
     LOG.debug("returning zkTracer for {}", headerLogString(blockHeader));
     currentTracer.set(new HeaderTracerTuple(blockHeader, zkTracer));

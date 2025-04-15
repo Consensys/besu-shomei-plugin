@@ -20,8 +20,10 @@ import net.consensys.shomei.context.ShomeiContext.ShomeiContextImpl;
 
 import java.math.BigInteger;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import com.google.auto.service.AutoService;
+import com.google.common.base.Suppliers;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BlockImportTracerProvider;
@@ -60,11 +62,13 @@ public class ZkTrieLogPlugin implements BesuPlugin {
 
     var blockchainService = serviceManager.getService(BlockchainService.class);
 
-    BigInteger chainId =
+    // chain id is late bound:
+    Supplier<Optional<BigInteger>> chainIdSupplier =
         blockchainService
-            .flatMap(BlockchainService::getChainId)
-            .orElseThrow(() -> new RuntimeException("Unable to set chain id for ZkTracer"));
-    ZkBlockImportTracerProvider tracerProvider = new ZkBlockImportTracerProvider(chainId);
+            .map(svc -> Suppliers.memoize(svc::getChainId))
+            .orElseThrow(() -> new RuntimeException("No BlockchainService available"));
+
+    ZkBlockImportTracerProvider tracerProvider = new ZkBlockImportTracerProvider(chainIdSupplier);
 
     if (ctx.getCliOptions().enableZkTracer) {
       ctx.setBlockImportTraceProvider(tracerProvider);

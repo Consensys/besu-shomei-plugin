@@ -26,6 +26,7 @@ import net.consensys.shomei.trielog.TrieLogValue;
 import java.math.BigInteger;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.apache.tuweni.bytes.Bytes32;
@@ -39,7 +40,7 @@ import org.junit.jupiter.api.Test;
 
 public class ZkBlockImportTracerProviderTest {
   private ZkBlockImportTracerProvider comparator =
-      spy(new ZkBlockImportTracerProvider(BigInteger.ONE));
+      spy(new ZkBlockImportTracerProvider(() -> Optional.of(BigInteger.ONE)));
   private BlockHeader mockHeader = mock(BlockHeader.class);
 
   @Test
