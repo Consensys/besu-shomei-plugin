@@ -15,6 +15,7 @@
 package net.consensys.shomei.blocktracing;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -41,14 +42,20 @@ import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 public class ZkBlockImportTracerProviderTest {
   ShomeiCliOptions testOpts = new ShomeiCliOptions();
   TestShomeiContext testContext;
   private ZkBlockImportTracerProvider comparator;
   private BlockHeader mockHeader = mock(BlockHeader.class);
+  @Mock TrieLogAccumulator mockAccumulator;
 
   @BeforeEach
   void setup() {
@@ -63,14 +70,14 @@ public class ZkBlockImportTracerProviderTest {
     Address a = Address.fromHexString("0x1");
     Address b = Address.fromHexString("0x2");
     var mockAcctVal = new ZkAccountValue(0, Wei.ZERO, Hash.ZERO, Hash.EMPTY_TRIE_HASH);
-    Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountToUpdate =
+    Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountsToUpdate =
         Map.of(
             a, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
             b, new TrieLogValue<>(mockAcctVal, mockAcctVal, false));
 
     Set<Address> hubAccountsSeen = Set.of(a, b);
-
-    comparator.compareAndWarnAccount(mockHeader, accountToUpdate, hubAccountsSeen);
+    doAnswer(__ -> accountsToUpdate).when(mockAccumulator).getAccountsToUpdate();
+    comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
     verify(comparator, never()).alert(any());
   }
 
@@ -81,14 +88,15 @@ public class ZkBlockImportTracerProviderTest {
     Address c = Address.fromHexString("0x3");
     var mockAcctVal = new ZkAccountValue(0, Wei.ZERO, Hash.ZERO, Hash.EMPTY_TRIE_HASH);
 
-    Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountToUpdate =
+    Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountsToUpdate =
         Map.of(
             a, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
             b, new TrieLogValue<>(mockAcctVal, mockAcctVal, false));
 
     Set<Address> hubAccountsSeen = Set.of(a, b, c);
 
-    comparator.compareAndWarnAccount(mockHeader, accountToUpdate, hubAccountsSeen);
+    doAnswer(__ -> accountsToUpdate).when(mockAccumulator).getAccountsToUpdate();
+    comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
     verify(comparator, times(1)).alert(any());
   }
 
@@ -99,7 +107,7 @@ public class ZkBlockImportTracerProviderTest {
     Address c = Address.fromHexString("0x3");
     var mockAcctVal = new ZkAccountValue(0, Wei.ZERO, Hash.ZERO, Hash.EMPTY_TRIE_HASH);
 
-    Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountToUpdate =
+    Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountsToUpdate =
         Map.of(
             a, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
             b, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
@@ -107,7 +115,8 @@ public class ZkBlockImportTracerProviderTest {
 
     Set<Address> hubAccountsSeen = Set.of(a, b);
 
-    comparator.compareAndWarnAccount(mockHeader, accountToUpdate, hubAccountsSeen);
+    doAnswer(__ -> accountsToUpdate).when(mockAccumulator).getAccountsToUpdate();
+    comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
     verify(comparator, times(1)).alert(any());
   }
 
@@ -123,7 +132,8 @@ public class ZkBlockImportTracerProviderTest {
         Map.of(addr, Map.of(slotKey, logTuple));
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
 
-    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, never()).alert(any());
@@ -140,7 +150,8 @@ public class ZkBlockImportTracerProviderTest {
         Map.of(addr, Map.of(slotKey, logTuple));
     Map<Address, Set<Bytes32>> hubSeenStorage = Collections.emptyMap();
 
-    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
@@ -156,7 +167,8 @@ public class ZkBlockImportTracerProviderTest {
         Collections.emptyMap();
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
 
-    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
@@ -176,7 +188,8 @@ public class ZkBlockImportTracerProviderTest {
         Map.of(addr, Map.of(slotKey, logTuple, slotKey2, logTuple));
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
 
-    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
@@ -196,7 +209,8 @@ public class ZkBlockImportTracerProviderTest {
         Map.of(addr, Map.of(slotKey, logTuple));
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes, slot2Bytes));
 
-    comparator.compareAndWarnStorage(mockHeader, storageToUpdate, hubSeenStorage);
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
