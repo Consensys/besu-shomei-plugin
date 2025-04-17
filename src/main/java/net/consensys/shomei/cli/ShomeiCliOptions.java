@@ -105,6 +105,15 @@ public class ShomeiCliOptions {
     public static boolean isEnabled(int mask, ZkTraceComparisonFeature feature) {
       return (mask & feature.bit) != 0;
     }
+
+    public static boolean anyEnabled(final int mask, final ZkTraceComparisonFeature... features) {
+      for (var feature : features) {
+        if (isEnabled(mask, feature)) {
+          return true;
+        }
+      }
+      return false;
+    }
   }
 
   @CommandLine.Option(

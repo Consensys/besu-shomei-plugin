@@ -14,6 +14,9 @@
  */
 package net.consensys.shomei.trielog;
 
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.DECORATE_FROM_HUB;
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.isEnabled;
+
 import net.consensys.shomei.context.ShomeiContext;
 
 import java.util.HashMap;
@@ -75,8 +78,10 @@ public class ZkTrieLogFactory implements TrieLogFactory {
           blockHeader.getBlockHash());
       var hubSeenDiff =
           ctx.getBlockImportTraceProvider().compareWithTrace(blockHeader, accumulator);
-      accountsToUpdate = decorateAccounts(accountsToUpdate, hubSeenDiff.adressesDiff());
-      storageToUpdate = decorateStorage(storageToUpdate, hubSeenDiff.storageDiff());
+      if (isEnabled(comparisonFeatureMask.get(), DECORATE_FROM_HUB)) {
+        accountsToUpdate = decorateAccounts(accountsToUpdate, hubSeenDiff.adressesDiff());
+        storageToUpdate = decorateStorage(storageToUpdate, hubSeenDiff.storageDiff());
+      }
     }
 
     LOG.debug(

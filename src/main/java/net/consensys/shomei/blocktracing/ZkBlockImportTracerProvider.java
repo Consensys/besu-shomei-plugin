@@ -18,11 +18,10 @@ import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.DECORATE_FROM_HUB;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.HUB_TO_ACCUMULATOR;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.MISMATCH_LOGGING;
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.anyEnabled;
 
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.zktracer.ZkTracer;
-import net.consensys.shomei.cli.ShomeiCliOptions;
-import net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature;
 import net.consensys.shomei.context.ShomeiContext;
 
 import java.math.BigInteger;
@@ -64,23 +63,13 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
   private final AtomicReference<HeaderTracerTuple> currentTracer = new AtomicReference<>();
   private final Supplier<Optional<BigInteger>> chainIdSupplier;
-  private final Supplier<Integer> comparisonFeatureMask;
+  private final Supplier<Integer> featureMask;
 
   public ZkBlockImportTracerProvider(
       final ShomeiContext ctx, final Supplier<Optional<BigInteger>> chainIdSupplier) {
     // defer to suppliers for late bound configs and services
     this.chainIdSupplier = chainIdSupplier;
-    this.comparisonFeatureMask = Suppliers.memoize(() -> ctx.getCliOptions().zkTraceComparisonMask);
-  }
-
-  private boolean isEnabled(final ZkTraceComparisonFeature... features) {
-    for (var feature : features) {
-      if (ShomeiCliOptions.ZkTraceComparisonFeature.isEnabled(
-          comparisonFeatureMask.get(), feature)) {
-        return true;
-      }
-    }
-    return false;
+    this.featureMask = Suppliers.memoize(() -> ctx.getCliOptions().zkTraceComparisonMask);
   }
 
   @Override
@@ -135,12 +124,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     var hubAccountsSeen = zkTracerTuple.zkTracer.getAddressesSeenByHubForRelativeBlock(1);
     var hubStorageSeen = zkTracerTuple.zkTracer.getStoragesSeenByHubForRelativeBlock(1);
 
-    var hubAccountDif = compareAndWarnAccount(blockHeader, accumulator, hubAccountsSeen);
+    var hubAccountDiff = compareAndWarnAccount(blockHeader, accumulator, hubAccountsSeen);
 
     var hubStorageDiff = compareAndWarnStorage(blockHeader, accumulator, hubStorageSeen);
 
     LOG.debug("completed comparison for {}", headerLogString(blockHeader));
-    return new HubSeenDiff(hubAccountDif, hubStorageDiff);
+    return new HubSeenDiff(hubAccountDiff, hubStorageDiff);
   }
 
   @VisibleForTesting
@@ -158,7 +147,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
         storageToUpdate.size());
 
     // First pass: check hubSeen -> storageToUpdate
-    if (isEnabled(HUB_TO_ACCUMULATOR, DECORATE_FROM_HUB)) {
+    if (anyEnabled(featureMask.get(), HUB_TO_ACCUMULATOR, DECORATE_FROM_HUB)) {
       hubSeenStorage.forEach(
           (address, hubSlots) -> {
             var accumulatorSlots = storageToUpdate.get(address);
@@ -169,7 +158,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                           "block {} hub account {} is missing in accumulator storage slot modifications",
                           blockHeader.getNumber(),
                           address.toHexString()));
-              if (isEnabled(DECORATE_FROM_HUB)) {
+              if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
                 // add all hubSeenSlots for this address to accumulator:
                 hubStorageDiff.put(address, hubSlots);
               }
@@ -197,7 +186,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     }
 
     // Second pass: check storageToUpdate -> hubSeen
-    if (isEnabled(ACCUMULATOR_TO_HUB)) {
+    if (anyEnabled(featureMask.get(), ACCUMULATOR_TO_HUB)) {
       storageToUpdate.forEach(
           (address, accumulatorSlots) -> {
             var hubSlots = hubSeenStorage.get(address);
@@ -258,7 +247,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
         accountsToUpdate.size());
 
     // Accounts in hubSeen but missing from accountsToUpdate
-    if (isEnabled(HUB_TO_ACCUMULATOR, DECORATE_FROM_HUB)) {
+    if (anyEnabled(featureMask.get(), HUB_TO_ACCUMULATOR, DECORATE_FROM_HUB)) {
       Sets.difference(hubSeenAddresses, accountsToUpdate.keySet())
           .forEach(
               hubAddress -> {
@@ -268,14 +257,14 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                             "block {} hub seen account {} is missing from accumulator updated addresses",
                             blockHeader.getNumber(),
                             hubAddress.toHexString()));
-                if (isEnabled(DECORATE_FROM_HUB)) {
+                if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
                   hubAccountsDiff.add(hubAddress);
                 }
               });
     }
 
     // Accounts in accountsToUpdate but missing from hubSeen
-    if (isEnabled(ACCUMULATOR_TO_HUB)) {
+    if (anyEnabled(featureMask.get(), ACCUMULATOR_TO_HUB)) {
 
       Sets.difference(accountsToUpdate.keySet(), hubSeenAddresses)
           .forEach(
@@ -299,7 +288,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
    */
   @VisibleForTesting
   void alert(final Runnable logLambda) {
-    if (isEnabled(MISMATCH_LOGGING)) {
+    if (anyEnabled(featureMask.get(), MISMATCH_LOGGING)) {
       logLambda.run();
     }
   }

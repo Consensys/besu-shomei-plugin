@@ -131,9 +131,11 @@ public class ZkTrieLogFactoryTests {
     // mock trace provider
     var mockTraceProvider = mock(ZkBlockImportTracerProvider.class);
     var mockAddress = Address.fromHexString("0xdeadbeef");
+    var mockAddress2 = Address.fromHexString("0xc0ffee");
     var mockDiff =
         new HubSeenDiff(
-            Set.of(mockAddress), Map.of(mockAddress, Set.of(UInt256.ZERO, UInt256.ONE)));
+            Set.of(mockAddress, mockAddress2),
+            Map.of(mockAddress, Set.of(UInt256.ZERO, UInt256.ONE)));
     doAnswer(__ -> mockDiff).when(mockTraceProvider).compareWithTrace(any(), any());
 
     // mock test options to enable tracing
@@ -144,7 +146,9 @@ public class ZkTrieLogFactoryTests {
     testCtx.setCliOptions(testOpts).setBlockImportTraceProvider(mockTraceProvider);
 
     // mock an accumulator
+    AccountValue mockPrior = new ZkAccountValue(1L, Wei.ZERO, Hash.EMPTY_TRIE_HASH, Hash.EMPTY);
     var mockAccountMap = new HashMap<Address, TrieLogValue<AccountValue>>();
+    mockAccountMap.put(mockAddress2, new TrieLogValue<>(mockPrior, mockPrior, false));
     var mockStorageMap = new HashMap<Address, Map<StorageSlotKey, TrieLogValue<UInt256>>>();
     var mockAccumulator = mock(TrieLogAccumulator.class, RETURNS_DEEP_STUBS);
     doAnswer(__ -> mockAccountMap).when(mockAccumulator).getAccountsToUpdate();
@@ -159,7 +163,11 @@ public class ZkTrieLogFactoryTests {
     // generate the trielog
     var trielog = factory.create(mockAccumulator, mockHeader);
 
+    // assert hub added address is present
     assertThat(trielog.getAccountChanges().containsKey(mockAddress)).isTrue();
+    // assert accumulator address is still present
+    assertThat(trielog.getAccountChanges().containsKey(mockAddress2)).isTrue();
+    assertThat(trielog.getAccountChanges().get(mockAddress2).getPrior()).isEqualTo(mockPrior);
     var hubStorageChanges = trielog.getStorageChanges();
     assertThat(hubStorageChanges).isNotNull();
     assertThat(hubStorageChanges.isEmpty()).isFalse();
