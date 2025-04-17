@@ -25,9 +25,12 @@ import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.common.base.Suppliers;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
@@ -61,17 +64,20 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   @SuppressWarnings("unchecked")
   public TrieLog create(final TrieLogAccumulator accumulator, final BlockHeader blockHeader) {
 
+    var accountsToUpdate = accumulator.getAccountsToUpdate();
+    var codeToUpdate = accumulator.getCodeToUpdate();
+    var storageToUpdate = accumulator.getStorageToUpdate();
+
     if (comparisonFeatureMask.get() > 0) {
       LOG.debug(
           "comparing ZkTrieLog with ZkTracer for block {}:{}",
           blockHeader.getNumber(),
           blockHeader.getBlockHash());
-      ctx.getBlockImportTraceProvider().compareWithTrace(blockHeader, accumulator);
+      var hubSeenDiff =
+          ctx.getBlockImportTraceProvider().compareWithTrace(blockHeader, accumulator);
+      accountsToUpdate = decorateAccounts(accountsToUpdate, hubSeenDiff.adressesDiff());
+      storageToUpdate = decorateStorage(storageToUpdate, hubSeenDiff.storageDiff());
     }
-
-    var accountsToUpdate = accumulator.getAccountsToUpdate();
-    var codeToUpdate = accumulator.getCodeToUpdate();
-    var storageToUpdate = accumulator.getStorageToUpdate();
 
     LOG.debug(
         "creating ZkTrieLog for block {}:{}", blockHeader.getNumber(), blockHeader.getBlockHash());
@@ -83,6 +89,47 @@ public class ZkTrieLogFactory implements TrieLogFactory {
         (Map<Address, LogTuple<Bytes>>) codeToUpdate,
         (Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate,
         true);
+  }
+
+  /* safe map decorator, in case the map we are provided is immutable */
+  @SuppressWarnings("unchecked")
+  Map<Address, LogTuple<AccountValue>> decorateAccounts(
+      Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
+      Set<Address> hubSeenAccounts) {
+    return Stream.concat(
+            accountsToUpdate.entrySet().stream()
+                .map(entry -> Map.entry(entry.getKey(), (LogTuple<AccountValue>) entry.getValue())),
+            hubSeenAccounts.stream()
+                .filter(address -> !accountsToUpdate.containsKey(address))
+                .map(
+                    address ->
+                        Map.entry(address, new TrieLogValue<AccountValue>(null, null, false))))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  /* safe map decorator which also solves challenges with generics */
+  @SuppressWarnings("unchecked")
+  Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> decorateStorage(
+      Map<Address, ? extends Map<StorageSlotKey, ? extends TrieLog.LogTuple<UInt256>>>
+          storageToUpdate,
+      Map<Address, Set<Bytes32>> hubSeenStorage) {
+
+    Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> result = new HashMap<>();
+
+    for (var seenStorage : hubSeenStorage.entrySet()) {
+      Map<StorageSlotKey, LogTuple<UInt256>> storageAddressEntry =
+          Optional.ofNullable(storageToUpdate.get(seenStorage.getKey()))
+              .map(m -> (Map<StorageSlotKey, LogTuple<UInt256>>) m)
+              .orElseGet(HashMap::new);
+      seenStorage
+          .getValue()
+          .forEach(
+              slotKey ->
+                  storageAddressEntry.putIfAbsent(
+                      new StorageSlotKey(UInt256.fromBytes(slotKey)), null));
+      result.put(seenStorage.getKey(), storageAddressEntry);
+    }
+    return result;
   }
 
   @Override
@@ -153,11 +200,20 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     output.endList(); // container
   }
 
+  /* here just for testing */
   @Override
   public PluginTrieLogLayer deserialize(final byte[] bytes) {
     return readFrom(new BytesValueRLPInput(Bytes.wrap(bytes), false));
   }
 
+  /*
+   * This is here for testing purposes, readFrom cannot defer to existing storage when
+   * encountering null values for prior or updated values and should not be considered
+   * a zk-state-friendly implementation for that reason.
+   *
+   * For a state-deferring implementation, see shomei trielog decoding implementation:
+   * https://github.com/Consensys/shomei/blob/main/core/src/main/java/net/consensys/shomei/trielog/TrieLogLayerConverter.java
+   */
   public static PluginTrieLogLayer readFrom(final RLPInput input) {
     Map<Address, LogTuple<AccountValue>> accounts = new HashMap<>();
     Map<Address, LogTuple<Bytes>> code = new HashMap<>();
