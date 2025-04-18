@@ -28,8 +28,6 @@ import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.google.common.base.Suppliers;
 import org.apache.tuweni.bytes.Bytes;
@@ -101,15 +99,12 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   Map<Address, LogTuple<AccountValue>> decorateAccounts(
       Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
       Set<Address> hubSeenAccounts) {
-    return Stream.concat(
-            accountsToUpdate.entrySet().stream()
-                .map(entry -> Map.entry(entry.getKey(), (LogTuple<AccountValue>) entry.getValue())),
-            hubSeenAccounts.stream()
-                .filter(address -> !accountsToUpdate.containsKey(address))
-                .map(
-                    address ->
-                        Map.entry(address, new TrieLogValue<AccountValue>(null, null, false))))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    final Map<Address, LogTuple<AccountValue>> decorated =
+        new HashMap<>((Map<Address, LogTuple<AccountValue>>) accountsToUpdate);
+    for (var hubAccount : hubSeenAccounts) {
+      decorated.putIfAbsent(hubAccount, null);
+    }
+    return decorated;
   }
 
   /* safe map decorator which also solves challenges with generics */
@@ -119,20 +114,22 @@ public class ZkTrieLogFactory implements TrieLogFactory {
           storageToUpdate,
       Map<Address, Set<Bytes32>> hubSeenStorage) {
 
-    Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> result = new HashMap<>();
+    Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> result =
+        new HashMap<>((Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate);
 
     for (var seenStorage : hubSeenStorage.entrySet()) {
-      Map<StorageSlotKey, LogTuple<UInt256>> storageAddressEntry =
-          Optional.ofNullable(storageToUpdate.get(seenStorage.getKey()))
-              .map(m -> (Map<StorageSlotKey, LogTuple<UInt256>>) m)
-              .orElseGet(HashMap::new);
-      seenStorage
-          .getValue()
-          .forEach(
-              slotKey ->
-                  storageAddressEntry.putIfAbsent(
-                      new StorageSlotKey(UInt256.fromBytes(slotKey)), null));
-      result.put(seenStorage.getKey(), storageAddressEntry);
+
+      Map<StorageSlotKey, LogTuple<UInt256>> storageForAddress =
+          new HashMap<>(
+              Optional.ofNullable(
+                      (Map<StorageSlotKey, LogTuple<UInt256>>)
+                          storageToUpdate.get(seenStorage.getKey()))
+                  .orElse(new HashMap<>()));
+
+      for (var slotKey : seenStorage.getValue()) {
+        storageForAddress.putIfAbsent(new StorageSlotKey(UInt256.fromBytes(slotKey)), null);
+      }
+      result.put(seenStorage.getKey(), storageForAddress);
     }
     return result;
   }
