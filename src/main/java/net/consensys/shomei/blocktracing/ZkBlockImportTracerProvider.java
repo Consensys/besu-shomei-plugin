@@ -155,9 +155,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
               alert(
                   () ->
                       LOG.warn(
-                          "block {} hub account {} is missing in accumulator storage slot modifications",
+                          "block {} hub account {} is missing all keys {} in accumulator storage slot modifications",
                           blockHeader.getNumber(),
-                          address.toHexString()));
+                          address.toHexString(),
+                          hubSlots.stream()
+                              .map(Bytes32::toShortHexString)
+                              .collect(Collectors.joining(","))));
               if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
                 // add all hubSeenSlots for this address to accumulator:
                 hubStorageDiff.put(address, hubSlots);
