@@ -315,17 +315,17 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
   public static <T> void writeInnerRlp(
       final LogTuple<T> value, final RLPOutput output, final BiConsumer<RLPOutput, T> writer) {
-    if (value.getPrior() == null) {
+    if (value == null || value.getPrior() == null) {
       output.writeNull();
     } else {
       writer.accept(output, value.getPrior());
     }
-    if (value.getUpdated() == null) {
+    if (value == null || value.getUpdated() == null) {
       output.writeNull();
     } else {
       writer.accept(output, value.getUpdated());
     }
-    if (!value.isClearedAtLeastOnce()) {
+    if (value != null && !value.isClearedAtLeastOnce()) {
       output.writeNull();
     } else {
       output.writeInt(1);
