@@ -149,6 +149,7 @@ public class ZkTrieLogFactoryTests {
     AccountValue mockPrior = new ZkAccountValue(1L, Wei.ZERO, Hash.EMPTY_TRIE_HASH, Hash.EMPTY);
     var mockAccountMap = new HashMap<Address, TrieLogValue<AccountValue>>();
     mockAccountMap.put(mockAddress2, new TrieLogValue<>(mockPrior, mockPrior, false));
+
     var mockStorageMap = new HashMap<Address, Map<StorageSlotKey, TrieLogValue<UInt256>>>();
     var mockAccumulator = mock(TrieLogAccumulator.class, RETURNS_DEEP_STUBS);
     doAnswer(__ -> mockAccountMap).when(mockAccumulator).getAccountsToUpdate();
@@ -163,8 +164,10 @@ public class ZkTrieLogFactoryTests {
     // generate the trielog
     var trielog = factory.create(mockAccumulator, mockHeader);
 
-    // assert hub added address is present
+    // assert hub added address is present (with no values)
     assertThat(trielog.getAccountChanges().containsKey(mockAddress)).isTrue();
+    assertThat(trielog.getAccountChanges().get(mockAddress)).isNull();
+
     // assert accumulator address is still present
     assertThat(trielog.getAccountChanges().containsKey(mockAddress2)).isTrue();
     assertThat(trielog.getAccountChanges().get(mockAddress2).getPrior()).isEqualTo(mockPrior);
