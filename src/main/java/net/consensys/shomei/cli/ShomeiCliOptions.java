@@ -22,8 +22,6 @@ import picocli.CommandLine;
 /** Shomei cli options. */
 public class ShomeiCliOptions {
 
-  static final ShomeiCliOptions INSTANCE = new ShomeiCliOptions();
-
   public static final String DEFAULT_SHOMEI_HTTP_HOST = "127.0.0.1";
 
   public static final int DEFAULT_SHOMEI_HTTP_PORT = 8888;
@@ -129,10 +127,6 @@ public class ShomeiCliOptions {
         "Add values (e.g., 3 = LOGGING + HUB→ACC, default no comparison enabled)."
       })
   public int zkTraceComparisonMask = 0;
-
-  public static ShomeiCliOptions create() {
-    return INSTANCE;
-  }
 
   @Override
   public String toString() {

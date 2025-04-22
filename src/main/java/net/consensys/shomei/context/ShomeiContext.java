@@ -40,7 +40,7 @@ public interface ShomeiContext {
   ShomeiCliOptions getCliOptions();
 
   class ShomeiContextImpl implements ShomeiContext {
-    private final ShomeiCliOptions cliOptions = ShomeiCliOptions.create();
+    private final ShomeiCliOptions cliOptions = new ShomeiCliOptions();
     private ZkBlockImportTracerProvider blockImportTraceProvider = null;
     private ZkTrieLogFactory trieLogFactory = null;
     private ZkTrieLogService trieLogService = null;

@@ -17,7 +17,7 @@ package net.consensys.shomei.context;
 import net.consensys.shomei.cli.ShomeiCliOptions;
 
 public class TestShomeiContext extends ShomeiContext.ShomeiContextImpl {
-  private ShomeiCliOptions testCliOptions = ShomeiCliOptions.create();
+  private ShomeiCliOptions testCliOptions = new ShomeiCliOptions();
 
   private TestShomeiContext() {
     super();
