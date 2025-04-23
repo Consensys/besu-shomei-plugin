@@ -28,7 +28,7 @@ public class ShomeiCliOptions {
 
   public static final boolean DEFAULT_ENABLE_ZKTRACER = true;
 
-  public static final boolean DEFAULT_ENABLE_ZKTRACE_COMPARISON = false;
+  public static final int DEFAULT_SHOMEI_SKIP_UNTIL_BLOCK = 1;
 
   public static final String OPTION_SHOMEI_HTTP_HOST = "--plugin-shomei-http-host";
 
@@ -38,6 +38,9 @@ public class ShomeiCliOptions {
 
   public static final String OPTION_SHOMEI_ZKTRACE_COMPARISON_MODE =
       "--plugin-shomei-zktrace-comparison-mode";
+
+  public static final String OPTION_SHOMEI_ZKTRACE_SKIP_UNTIL_BLOCK =
+      "--plugin-shomei-skip-zktracer-until-block";
 
   @CommandLine.Option(
       names = {OPTION_SHOMEI_HTTP_HOST},
@@ -62,6 +65,14 @@ public class ShomeiCliOptions {
       paramLabel = "<BOOLEAN>",
       description = "Use zkTracer on block import")
   public Boolean enableZkTracer = DEFAULT_ENABLE_ZKTRACER;
+
+  @CommandLine.Option(
+      names = {OPTION_SHOMEI_ZKTRACE_SKIP_UNTIL_BLOCK},
+      hidden = true,
+      defaultValue = "1",
+      paramLabel = "<INTEGER>",
+      description = "HTTP host port to push shomei trielogs to")
+  public Integer zkSkipTraceUntil = DEFAULT_SHOMEI_SKIP_UNTIL_BLOCK;
 
   /*
    * use bitmasking to enable/disable comparsion features
@@ -135,6 +146,7 @@ public class ShomeiCliOptions {
         .add("shomei-http-port", shomeiHttpPort)
         .add("shomei-enable-zktracer", enableZkTracer)
         .add("shomei-zktrace-comparison-mode", zkTraceComparisonMask)
+        .add("shomei-zktrace-skip-until-block", zkSkipTraceUntil)
         .toString();
   }
 }

@@ -21,6 +21,7 @@ import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.anyEnabled;
 
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.shomei.context.ShomeiContext;
 
@@ -64,18 +65,28 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   private final AtomicReference<HeaderTracerTuple> currentTracer = new AtomicReference<>();
   private final Supplier<Optional<BigInteger>> chainIdSupplier;
   private final Supplier<Integer> featureMask;
+  private final Supplier<Integer> skipTraceUntil;
 
   public ZkBlockImportTracerProvider(
       final ShomeiContext ctx, final Supplier<Optional<BigInteger>> chainIdSupplier) {
     // defer to suppliers for late bound configs and services
     this.chainIdSupplier = chainIdSupplier;
+    this.skipTraceUntil = Suppliers.memoize(() -> ctx.getCliOptions().zkSkipTraceUntil);
     this.featureMask = Suppliers.memoize(() -> ctx.getCliOptions().zkTraceComparisonMask);
   }
 
   @Override
   public BlockAwareOperationTracer getBlockImportTracer(final BlockHeader blockHeader) {
+    // if blockheader is prior to the configured skip-until param, return no_tracing
+    if (skipTraceUntil.get() > blockHeader.getNumber()) {
+      return BlockAwareOperationTracer.NO_TRACING;
+    }
+
+    // TODO: hardcoding LONDON works for now, but will need to be revisited when linea forks.
+    //      https://github.com/hyperledger/besu/issues/8535
     ZkTracer zkTracer =
         new ZkTracer(
+            Fork.LONDON,
             LineaL1L2BridgeSharedConfiguration.EMPTY,
             chainIdSupplier.get().orElseThrow(() -> new RuntimeException("Chain Id unavailable")));
 
