@@ -15,23 +15,38 @@
 package net.consensys.shomei.trielog;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 
+import net.consensys.shomei.blocktracing.ZkBlockImportTracerProvider;
+import net.consensys.shomei.blocktracing.ZkBlockImportTracerProvider.HubSeenDiff;
+import net.consensys.shomei.cli.ShomeiCliOptions;
+import net.consensys.shomei.context.TestShomeiContext;
+
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class ZkTrieLogFactoryTests {
 
+  final TestShomeiContext testCtx = TestShomeiContext.create();
   final Address accountFixture = Address.fromHexString("0xdeadbeef");
   final PluginTrieLogLayer trieLogFixture = new PluginTrieLogLayer(Hash.ZERO);
 
@@ -60,7 +75,7 @@ public class ZkTrieLogFactoryTests {
 
   @Test
   public void testZkSlotKeyIsPresent() {
-    TrieLogFactory factory = new ZkTrieLogFactory();
+    TrieLogFactory factory = new ZkTrieLogFactory(testCtx);
     byte[] rlp = factory.serialize(trieLogFixture);
 
     TrieLog layer = factory.deserialize(rlp);
@@ -77,7 +92,7 @@ public class ZkTrieLogFactoryTests {
 
   @Test
   public void testZkSlotKeyZeroReadIsPresent() {
-    TrieLogFactory factory = new ZkTrieLogFactory();
+    TrieLogFactory factory = new ZkTrieLogFactory(testCtx);
     // add a read of an empty slot:
     trieLogFixture
         .getStorageChanges()
@@ -98,10 +113,9 @@ public class ZkTrieLogFactoryTests {
   @Test
   public void testZkAccountReadIsPresent() {
     // zkbesu test
-    final TrieLogFactory factory = new ZkTrieLogFactory();
+    final TrieLogFactory factory = new ZkTrieLogFactory(testCtx);
     final Address readAccount = Address.fromHexString("0xfeedf00d");
     final ZkAccountValue read = new ZkAccountValue(0, Wei.fromEth(1), Hash.EMPTY, Hash.EMPTY);
-
     trieLogFixture.getAccountChanges().put(readAccount, new TrieLogValue<>(read, read, false));
 
     byte[] rlp = factory.serialize(trieLogFixture);
@@ -110,5 +124,62 @@ public class ZkTrieLogFactoryTests {
     assertThat(layer).isEqualTo(trieLogFixture);
     assertThat(layer.getAccountChanges().get(readAccount).getUpdated()).isEqualTo(read);
     assertThat(layer.getAccountChanges().get(readAccount).getPrior()).isEqualTo(read);
+  }
+
+  @Test
+  public void assertHubSeenIsPresentInTrieLog() {
+    // mock trace provider
+    var mockTraceProvider = mock(ZkBlockImportTracerProvider.class);
+    var mockAddress = Address.fromHexString("0xdeadbeef");
+    var mockAddress2 = Address.fromHexString("0xc0ffee");
+    var mockDiff =
+        new HubSeenDiff(
+            Set.of(mockAddress, mockAddress2),
+            Map.of(mockAddress, Set.of(UInt256.ZERO, UInt256.ONE)));
+    doAnswer(__ -> mockDiff).when(mockTraceProvider).compareWithTrace(any(), any());
+
+    // mock test options to enable tracing
+    ShomeiCliOptions testOpts = new ShomeiCliOptions();
+    testOpts.zkTraceComparisonMask = 15;
+
+    // configure our test context
+    testCtx.setCliOptions(testOpts).setBlockImportTraceProvider(mockTraceProvider);
+
+    // mock an accumulator
+    AccountValue mockPrior = new ZkAccountValue(1L, Wei.ZERO, Hash.EMPTY_TRIE_HASH, Hash.EMPTY);
+    var mockAccountMap = new HashMap<Address, TrieLogValue<AccountValue>>();
+    mockAccountMap.put(mockAddress2, new TrieLogValue<>(mockPrior, mockPrior, false));
+
+    var mockStorageMap = new HashMap<Address, Map<StorageSlotKey, TrieLogValue<UInt256>>>();
+    var mockAccumulator = mock(TrieLogAccumulator.class, RETURNS_DEEP_STUBS);
+    doAnswer(__ -> mockAccountMap).when(mockAccumulator).getAccountsToUpdate();
+    doAnswer(__ -> mockStorageMap).when(mockAccumulator).getStorageToUpdate();
+
+    // mock block header
+    var mockHeader = mock(BlockHeader.class, RETURNS_DEEP_STUBS);
+
+    // create factor class under test:
+    var factory = new ZkTrieLogFactory(testCtx);
+
+    // generate the trielog
+    var trielog = factory.create(mockAccumulator, mockHeader);
+
+    // assert hub added address is present (with no values)
+    assertThat(trielog.getAccountChanges().containsKey(mockAddress)).isTrue();
+    assertThat(trielog.getAccountChanges().get(mockAddress)).isNull();
+
+    // assert accumulator address is still present
+    assertThat(trielog.getAccountChanges().containsKey(mockAddress2)).isTrue();
+    assertThat(trielog.getAccountChanges().get(mockAddress2).getPrior()).isEqualTo(mockPrior);
+    var hubStorageChanges = trielog.getStorageChanges();
+    assertThat(hubStorageChanges).isNotNull();
+    assertThat(hubStorageChanges.isEmpty()).isFalse();
+    var hubAddressStorageChanges = hubStorageChanges.get(mockAddress);
+    assertThat(hubAddressStorageChanges).isNotNull();
+    assertThat(hubAddressStorageChanges.isEmpty()).isFalse();
+    var zeroKey = new StorageSlotKey(UInt256.ZERO);
+    assertThat(hubAddressStorageChanges.containsKey(zeroKey)).isTrue();
+    var oneKey = new StorageSlotKey(UInt256.ONE);
+    assertThat(hubAddressStorageChanges.containsKey(oneKey)).isTrue();
   }
 }

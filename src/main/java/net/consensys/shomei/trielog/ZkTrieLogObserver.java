@@ -14,6 +14,8 @@
  */
 package net.consensys.shomei.trielog;
 
+import net.consensys.shomei.context.ShomeiContext;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -36,7 +38,7 @@ public class ZkTrieLogObserver
     implements TrieLogEvent.TrieLogObserver, BesuEvents.SyncStatusListener {
 
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogObserver.class);
-  // todo: get from config
+  private final ShomeiContext ctx;
   private final String shomeiHttpHost;
   private final int shomeiHttpPort;
   private boolean isSyncing;
@@ -44,16 +46,14 @@ public class ZkTrieLogObserver
 
   private final WebClient webClient;
 
-  public ZkTrieLogObserver(final String shomeiHttpHost, final int shomeiHttpPort) {
+  public ZkTrieLogObserver(final ShomeiContext ctx) {
     Vertx vertx = Vertx.vertx();
     WebClientOptions options = new WebClientOptions();
     this.webClient = WebClient.create(vertx, options);
-    this.shomeiHttpHost = shomeiHttpHost;
-    this.shomeiHttpPort = shomeiHttpPort;
+    this.shomeiHttpHost = ctx.getCliOptions().shomeiHttpHost;
+    this.shomeiHttpPort = ctx.getCliOptions().shomeiHttpPort;
+    this.ctx = ctx;
     LOG.info("shomei http host:port {}:{}", this.shomeiHttpHost, this.shomeiHttpPort);
-
-    // TODO: wire up the SyncStatusListener via plugin, until then hack:
-
   }
 
   @Override
@@ -104,7 +104,7 @@ public class ZkTrieLogObserver
 
   @VisibleForTesting
   ZkTrieLogParameter buildParam(final TrieLogEvent addedEvent) {
-    byte[] rlpBytes = ZkTrieLogFactory.INSTANCE.serialize(addedEvent.layer());
+    byte[] rlpBytes = ctx.getZkTrieLogFactory().serialize(addedEvent.layer());
 
     return new ZkTrieLogParameter(
         addedEvent.layer().getBlockNumber().orElse(null),

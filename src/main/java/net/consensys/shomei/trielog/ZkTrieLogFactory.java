@@ -14,6 +14,11 @@
  */
 package net.consensys.shomei.trielog;
 
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.DECORATE_FROM_HUB;
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.isEnabled;
+
+import net.consensys.shomei.context.ShomeiContext;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -22,8 +27,11 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
+import com.google.common.base.Suppliers;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
@@ -42,8 +50,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ZkTrieLogFactory implements TrieLogFactory {
+
   private static final Logger LOG = LoggerFactory.getLogger(ZkTrieLogFactory.class);
-  public static final ZkTrieLogFactory INSTANCE = new ZkTrieLogFactory();
+  private final ShomeiContext ctx;
+  private final Supplier<Integer> comparisonFeatureMask;
+
+  public ZkTrieLogFactory(ShomeiContext ctx) {
+    this.ctx = ctx;
+    // defer for late bound config
+    comparisonFeatureMask = Suppliers.memoize(() -> ctx.getCliOptions().zkTraceComparisonMask);
+  }
 
   @Override
   @SuppressWarnings("unchecked")
@@ -52,6 +68,19 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     var accountsToUpdate = accumulator.getAccountsToUpdate();
     var codeToUpdate = accumulator.getCodeToUpdate();
     var storageToUpdate = accumulator.getStorageToUpdate();
+
+    if (comparisonFeatureMask.get() > 0) {
+      LOG.debug(
+          "comparing ZkTrieLog with ZkTracer for block {}:{}",
+          blockHeader.getNumber(),
+          blockHeader.getBlockHash());
+      var hubSeenDiff =
+          ctx.getBlockImportTraceProvider().compareWithTrace(blockHeader, accumulator);
+      if (isEnabled(comparisonFeatureMask.get(), DECORATE_FROM_HUB)) {
+        accountsToUpdate = decorateAccounts(accountsToUpdate, hubSeenDiff.adressesDiff());
+        storageToUpdate = decorateStorage(storageToUpdate, hubSeenDiff.storageDiff());
+      }
+    }
 
     LOG.debug(
         "creating ZkTrieLog for block {}:{}", blockHeader.getNumber(), blockHeader.getBlockHash());
@@ -63,6 +92,46 @@ public class ZkTrieLogFactory implements TrieLogFactory {
         (Map<Address, LogTuple<Bytes>>) codeToUpdate,
         (Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate,
         true);
+  }
+
+  /* safe map decorator, in case the map we are provided is immutable */
+  @SuppressWarnings("unchecked")
+  Map<Address, LogTuple<AccountValue>> decorateAccounts(
+      Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
+      Set<Address> hubSeenAccounts) {
+    final Map<Address, LogTuple<AccountValue>> decorated =
+        new HashMap<>((Map<Address, LogTuple<AccountValue>>) accountsToUpdate);
+    for (var hubAccount : hubSeenAccounts) {
+      decorated.putIfAbsent(hubAccount, null);
+    }
+    return decorated;
+  }
+
+  /* safe map decorator which also solves challenges with generics */
+  @SuppressWarnings("unchecked")
+  Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> decorateStorage(
+      Map<Address, ? extends Map<StorageSlotKey, ? extends TrieLog.LogTuple<UInt256>>>
+          storageToUpdate,
+      Map<Address, Set<Bytes32>> hubSeenStorage) {
+
+    Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> result =
+        new HashMap<>((Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate);
+
+    for (var seenStorage : hubSeenStorage.entrySet()) {
+
+      Map<StorageSlotKey, LogTuple<UInt256>> storageForAddress =
+          new HashMap<>(
+              Optional.ofNullable(
+                      (Map<StorageSlotKey, LogTuple<UInt256>>)
+                          storageToUpdate.get(seenStorage.getKey()))
+                  .orElse(new HashMap<>()));
+
+      for (var slotKey : seenStorage.getValue()) {
+        storageForAddress.putIfAbsent(new StorageSlotKey(UInt256.fromBytes(slotKey)), null);
+      }
+      result.put(seenStorage.getKey(), storageForAddress);
+    }
+    return result;
   }
 
   @Override
@@ -133,11 +202,20 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     output.endList(); // container
   }
 
+  /* here just for testing */
   @Override
   public PluginTrieLogLayer deserialize(final byte[] bytes) {
     return readFrom(new BytesValueRLPInput(Bytes.wrap(bytes), false));
   }
 
+  /*
+   * This is here for testing purposes, readFrom cannot defer to existing storage when
+   * encountering null values for prior or updated values and should not be considered
+   * a zk-state-friendly implementation for that reason.
+   *
+   * For a state-deferring implementation, see shomei trielog decoding implementation:
+   * https://github.com/Consensys/shomei/blob/main/core/src/main/java/net/consensys/shomei/trielog/TrieLogLayerConverter.java
+   */
   public static PluginTrieLogLayer readFrom(final RLPInput input) {
     Map<Address, LogTuple<AccountValue>> accounts = new HashMap<>();
     Map<Address, LogTuple<Bytes>> code = new HashMap<>();
@@ -237,17 +315,18 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
   public static <T> void writeInnerRlp(
       final LogTuple<T> value, final RLPOutput output, final BiConsumer<RLPOutput, T> writer) {
-    if (value.getPrior() == null) {
+    // value may be null in cases like a zero-read or a 'decorated' value from zktracer hubSeen
+    if (value == null || value.getPrior() == null) {
       output.writeNull();
     } else {
       writer.accept(output, value.getPrior());
     }
-    if (value.getUpdated() == null) {
+    if (value == null || value.getUpdated() == null) {
       output.writeNull();
     } else {
       writer.accept(output, value.getUpdated());
     }
-    if (!value.isClearedAtLeastOnce()) {
+    if (value != null && !value.isClearedAtLeastOnce()) {
       output.writeNull();
     } else {
       output.writeInt(1);

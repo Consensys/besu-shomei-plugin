@@ -35,10 +35,11 @@ public class TrieLogJson {
   @JsonProperty("trieLog")
   private String trieLog;
 
-  public TrieLogJson(final TrieLogProvider.TrieLogRangeTuple tuple) {
+  public TrieLogJson(
+      final TrieLogProvider.TrieLogRangeTuple tuple, final ZkTrieLogFactory trieLogFactory) {
     this.blockHash = tuple.blockHash();
     this.blockNumber = tuple.blockNumber();
-    this.trieLog = Bytes.wrap(ZkTrieLogFactory.INSTANCE.serialize(tuple.trieLog())).toHexString();
+    this.trieLog = Bytes.wrap(trieLogFactory.serialize(tuple.trieLog())).toHexString();
   }
 
   public TrieLogJson(Hash blockHash, long blockNumber, String trieLog) {

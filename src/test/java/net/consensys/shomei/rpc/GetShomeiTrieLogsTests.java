@@ -19,9 +19,12 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
+import net.consensys.shomei.context.ShomeiContext;
+import net.consensys.shomei.context.TestShomeiContext;
 import net.consensys.shomei.rpc.methods.ShomeiGetTrieLog;
 import net.consensys.shomei.rpc.methods.ShomeiGetTrieLogsByRange;
 import net.consensys.shomei.trielog.PluginTrieLogLayer;
+import net.consensys.shomei.trielog.ZkTrieLogFactory;
 import net.consensys.shomei.trielog.ZkTrieLogService;
 
 import java.util.List;
@@ -48,8 +51,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class GetShomeiTrieLogsTests {
 
-  ZkTrieLogService trieLogService = spy(ZkTrieLogService.getInstance());
   @Mock TrieLogProvider mockProvider;
+  ShomeiContext ctx = TestShomeiContext.create();
+  ZkTrieLogService trieLogService = spy(new ZkTrieLogService(ctx));
 
   PluginTrieLogLayer mockLayer =
       new PluginTrieLogLayer(Hash.ZERO, Optional.of(0L), Map.of(), Map.of(), Map.of(), true);
@@ -59,11 +63,11 @@ public class GetShomeiTrieLogsTests {
 
   @BeforeEach
   public void setup(Vertx vertx, VertxTestContext testContext) {
+    ctx.setZkTrieLogService(trieLogService).setZkTrieLogFactory(new ZkTrieLogFactory(ctx));
+
     verticle =
         new MockJsonRpcHttpVerticle(
-            List.of(
-                new ShomeiGetTrieLogsByRange(trieLogService),
-                new ShomeiGetTrieLog(trieLogService)));
+            List.of(new ShomeiGetTrieLogsByRange(ctx), new ShomeiGetTrieLog(ctx)));
     // start verticle
     vertx.deployVerticle(verticle, testContext.succeedingThenComplete());
     client = WebClient.create(vertx);

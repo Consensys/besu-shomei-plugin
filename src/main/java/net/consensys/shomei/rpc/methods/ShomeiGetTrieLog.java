@@ -14,17 +14,16 @@
  */
 package net.consensys.shomei.rpc.methods;
 
-import net.consensys.shomei.trielog.ZkTrieLogFactory;
+import net.consensys.shomei.context.ShomeiContext;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 public class ShomeiGetTrieLog implements PluginRpcMethod {
-  private final TrieLogService trieLogService;
+  private final ShomeiContext ctx;
 
-  public ShomeiGetTrieLog(final TrieLogService trieLogService) {
-    this.trieLogService = trieLogService;
+  public ShomeiGetTrieLog(ShomeiContext ctx) {
+    this.ctx = ctx;
   }
 
   @Override
@@ -43,10 +42,10 @@ public class ShomeiGetTrieLog implements PluginRpcMethod {
     var params = rpcRequest.getParams();
     Long blockNumber = Long.parseLong(params[0].toString());
 
-    return trieLogService
+    return ctx.getTrieLogService()
         .getTrieLogProvider()
         .getTrieLogLayer(blockNumber)
-        .map(t -> Bytes.wrap(ZkTrieLogFactory.INSTANCE.serialize(t)).toHexString())
+        .map(t -> Bytes.wrap(ctx.getZkTrieLogFactory().serialize(t)).toHexString())
         .orElse("");
   }
 }

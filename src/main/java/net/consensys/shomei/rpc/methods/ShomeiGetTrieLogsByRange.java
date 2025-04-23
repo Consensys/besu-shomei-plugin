@@ -14,20 +14,19 @@
  */
 package net.consensys.shomei.rpc.methods;
 
+import net.consensys.shomei.context.ShomeiContext;
 import net.consensys.shomei.rpc.response.TrieLogJson;
-import net.consensys.shomei.trielog.ZkTrieLogService;
 
 import java.util.stream.Collectors;
 
-import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 @SuppressWarnings("unused")
 public class ShomeiGetTrieLogsByRange implements PluginRpcMethod {
-  private final TrieLogService trieLogService;
+  private final ShomeiContext ctx;
 
-  public ShomeiGetTrieLogsByRange(ZkTrieLogService trieLogService) {
-    this.trieLogService = trieLogService;
+  public ShomeiGetTrieLogsByRange(ShomeiContext ctx) {
+    this.ctx = ctx;
   }
 
   @Override
@@ -47,11 +46,12 @@ public class ShomeiGetTrieLogsByRange implements PluginRpcMethod {
     Long blockNumberFrom = Long.parseLong(params[0].toString());
     Long blockNumberTo = Long.parseLong(params[1].toString());
 
-    return trieLogService
+    return ctx
+        .getTrieLogService()
         .getTrieLogProvider()
         .getTrieLogsByRange(blockNumberFrom, blockNumberTo)
         .stream()
-        .map(TrieLogJson::new)
+        .map(z -> new TrieLogJson(z, ctx.getZkTrieLogFactory()))
         .collect(Collectors.toList());
   }
 }

@@ -1,0 +1,218 @@
+/*
+ * Copyright ConsenSys 2023
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package net.consensys.shomei.blocktracing;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+import net.consensys.shomei.cli.ShomeiCliOptions;
+import net.consensys.shomei.context.TestShomeiContext;
+import net.consensys.shomei.trielog.TrieLogValue;
+import net.consensys.shomei.trielog.ZkAccountValue;
+
+import java.math.BigInteger;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.AccountValue;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.StorageSlotKey;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+public class ZkBlockImportTracerProviderTest {
+  ShomeiCliOptions testOpts = new ShomeiCliOptions();
+  TestShomeiContext testContext;
+  private ZkBlockImportTracerProvider comparator;
+  private BlockHeader mockHeader = mock(BlockHeader.class);
+  @Mock TrieLogAccumulator mockAccumulator;
+
+  @BeforeEach
+  void setup() {
+    testContext = TestShomeiContext.create().setCliOptions(testOpts);
+    testOpts.zkTraceComparisonMask = 15;
+    comparator =
+        spy(new ZkBlockImportTracerProvider(testContext, () -> Optional.of(BigInteger.ONE)));
+  }
+
+  @Test
+  void testMatchingAccounts() {
+    Address a = Address.fromHexString("0x1");
+    Address b = Address.fromHexString("0x2");
+    var mockAcctVal = new ZkAccountValue(0, Wei.ZERO, Hash.ZERO, Hash.EMPTY_TRIE_HASH);
+    Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountsToUpdate =
+        Map.of(
+            a, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
+            b, new TrieLogValue<>(mockAcctVal, mockAcctVal, false));
+
+    Set<Address> hubAccountsSeen = Set.of(a, b);
+    doAnswer(__ -> accountsToUpdate).when(mockAccumulator).getAccountsToUpdate();
+    comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
+    verify(comparator, never()).alert(any());
+  }
+
+  @Test
+  void testHubSawMoreAccounts() {
+    Address a = Address.fromHexString("0x1");
+    Address b = Address.fromHexString("0x2");
+    Address c = Address.fromHexString("0x3");
+    var mockAcctVal = new ZkAccountValue(0, Wei.ZERO, Hash.ZERO, Hash.EMPTY_TRIE_HASH);
+
+    Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountsToUpdate =
+        Map.of(
+            a, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
+            b, new TrieLogValue<>(mockAcctVal, mockAcctVal, false));
+
+    Set<Address> hubAccountsSeen = Set.of(a, b, c);
+
+    doAnswer(__ -> accountsToUpdate).when(mockAccumulator).getAccountsToUpdate();
+    comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
+    verify(comparator, times(1)).alert(any());
+  }
+
+  @Test
+  void testAccumulatorSawMoreAccounts() {
+    Address a = Address.fromHexString("0x1");
+    Address b = Address.fromHexString("0x2");
+    Address c = Address.fromHexString("0x3");
+    var mockAcctVal = new ZkAccountValue(0, Wei.ZERO, Hash.ZERO, Hash.EMPTY_TRIE_HASH);
+
+    Map<Address, TrieLog.LogTuple<? extends AccountValue>> accountsToUpdate =
+        Map.of(
+            a, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
+            b, new TrieLogValue<>(mockAcctVal, mockAcctVal, false),
+            c, new TrieLogValue<>(mockAcctVal, mockAcctVal, false));
+
+    Set<Address> hubAccountsSeen = Set.of(a, b);
+
+    doAnswer(__ -> accountsToUpdate).when(mockAccumulator).getAccountsToUpdate();
+    comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
+    verify(comparator, times(1)).alert(any());
+  }
+
+  @Test
+  void testMatchingStorageMaps() {
+    Address addr = Address.fromHexString("0x1");
+    UInt256 slot = UInt256.valueOf(1234);
+    Bytes32 slotBytes = slot.toBytes();
+
+    StorageSlotKey slotKey = new StorageSlotKey(slot);
+    TrieLogValue<UInt256> logTuple = new TrieLogValue<UInt256>(UInt256.ZERO, UInt256.ZERO, false);
+    Map<Address, Map<StorageSlotKey, TrieLogValue<UInt256>>> storageToUpdate =
+        Map.of(addr, Map.of(slotKey, logTuple));
+    Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
+
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+
+    // ✅ Verify alert() was never called
+    verify(comparator, never()).alert(any());
+  }
+
+  @Test
+  void testHubMissingStorageAccount() {
+    Address addr = Address.fromHexString("0x1");
+    UInt256 slot = UInt256.valueOf(1234);
+
+    StorageSlotKey slotKey = new StorageSlotKey(slot);
+    TrieLogValue<UInt256> logTuple = new TrieLogValue<UInt256>(UInt256.ZERO, UInt256.ZERO, false);
+    Map<Address, Map<StorageSlotKey, TrieLogValue<UInt256>>> storageToUpdate =
+        Map.of(addr, Map.of(slotKey, logTuple));
+    Map<Address, Set<Bytes32>> hubSeenStorage = Collections.emptyMap();
+
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+
+    // ✅ Verify alert() was never called
+    verify(comparator, times(1)).alert(any());
+  }
+
+  @Test
+  void testAccumulatorMissingStorageAccount() {
+    Address addr = Address.fromHexString("0x1");
+    UInt256 slot = UInt256.valueOf(1234);
+    Bytes32 slotBytes = slot.toBytes();
+
+    Map<Address, Map<StorageSlotKey, TrieLogValue<UInt256>>> storageToUpdate =
+        Collections.emptyMap();
+    Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
+
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+
+    // ✅ Verify alert() was never called
+    verify(comparator, times(1)).alert(any());
+  }
+
+  @Test
+  void testHubMissingSlot() {
+    Address addr = Address.fromHexString("0x1");
+    UInt256 slot = UInt256.valueOf(1234);
+    UInt256 slot2 = UInt256.valueOf(4321);
+    Bytes32 slotBytes = slot.toBytes();
+
+    StorageSlotKey slotKey = new StorageSlotKey(slot);
+    StorageSlotKey slotKey2 = new StorageSlotKey(slot2);
+    TrieLogValue<UInt256> logTuple = new TrieLogValue<UInt256>(UInt256.ZERO, UInt256.ZERO, false);
+    Map<Address, Map<StorageSlotKey, TrieLogValue<UInt256>>> storageToUpdate =
+        Map.of(addr, Map.of(slotKey, logTuple, slotKey2, logTuple));
+    Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
+
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+
+    // ✅ Verify alert() was never called
+    verify(comparator, times(1)).alert(any());
+  }
+
+  @Test
+  void testAccumulatorMissingSlot() {
+    Address addr = Address.fromHexString("0x1");
+    UInt256 slot = UInt256.valueOf(1234);
+    UInt256 slot2 = UInt256.valueOf(4321);
+    Bytes32 slotBytes = slot.toBytes();
+    Bytes32 slot2Bytes = slot2.toBytes();
+
+    StorageSlotKey slotKey = new StorageSlotKey(slot);
+    TrieLogValue<UInt256> logTuple = new TrieLogValue<>(UInt256.ZERO, UInt256.ZERO, false);
+    Map<Address, Map<StorageSlotKey, TrieLogValue<UInt256>>> storageToUpdate =
+        Map.of(addr, Map.of(slotKey, logTuple));
+    Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes, slot2Bytes));
+
+    doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
+    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+
+    // ✅ Verify alert() was never called
+    verify(comparator, times(1)).alert(any());
+  }
+}
