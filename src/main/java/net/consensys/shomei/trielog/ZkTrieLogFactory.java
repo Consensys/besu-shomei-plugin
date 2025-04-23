@@ -315,6 +315,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
   public static <T> void writeInnerRlp(
       final LogTuple<T> value, final RLPOutput output, final BiConsumer<RLPOutput, T> writer) {
+    // value may be null in cases like a zero-read or a 'decorated' value from zktracer hubSeen
     if (value == null || value.getPrior() == null) {
       output.writeNull();
     } else {

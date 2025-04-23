@@ -317,11 +317,31 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     var updated = accountTuple.getUpdated();
     var prior = accountTuple.getPrior();
     if (prior == null || updated == null) {
-      if (prior == null) {
-        logBuilder.append("prior is null;");
+      if (prior != null) {
+        logBuilder.append(
+            String.format(
+                "updated is null;prior _Nonce:%d, _Balance:%s, _CodeHash:%s, _StorageRoot: %s",
+                prior.getNonce(),
+                Optional.ofNullable(prior.getBalance()).map(Wei::toShortHexString).orElse("null"),
+                Optional.ofNullable(prior.getCodeHash())
+                    .map(DelegatingBytes::toHexString)
+                    .orElse("null"),
+                Optional.ofNullable(prior.getStorageRoot())
+                    .map(DelegatingBytes::toHexString)
+                    .orElse("null")));
       }
-      if (updated == null) {
-        logBuilder.append("updated is null;");
+      if (updated != null) {
+        logBuilder.append(
+            String.format(
+                "prior is null;updated _Nonce:%d, _Balance:%s, _CodeHash:%s, _StorageRoot: %s",
+                updated.getNonce(),
+                Optional.ofNullable(updated.getBalance()).map(Wei::toShortHexString).orElse("null"),
+                Optional.ofNullable(updated.getCodeHash())
+                    .map(DelegatingBytes::toHexString)
+                    .orElse("null"),
+                Optional.ofNullable(updated.getStorageRoot())
+                    .map(DelegatingBytes::toHexString)
+                    .orElse("null")));
       }
     } else {
       if (prior.getNonce() != updated.getNonce()) {
