@@ -1,5 +1,16 @@
 # Changelog
 
+## version 0.5.0
+- add optional zktracing on block import [#32](https://github.com/Consensys/besu-shomei-plugin/pull/32)
+- use vanilla besu for build and runtime [#31](https://github.com/Consensys/besu-shomei-plugin/pull/31)
+
+## version 0.4.0
+- Update to support besu 24.12.x and linea-besu delivery 39.1 +
+
+updates plugin-api
+updates junit deps
+bumps the revision to 0.4.0
+
 ## version 0.3.2
 - minor bump for gradle and besu version
 
