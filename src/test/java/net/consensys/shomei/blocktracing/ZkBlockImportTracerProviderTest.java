@@ -14,6 +14,57 @@
  */
 package net.consensys.shomei.blocktracing;
 
+import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.shomei.cli.ShomeiCliOptions;
+import net.consensys.shomei.context.TestShomeiContext;
+import net.consensys.shomei.trielog.TrieLogValue;
+import net.consensys.shomei.trielog.ZkAccountValue;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.crypto.KeyPair;
+import org.hyperledger.besu.crypto.SECPPrivateKey;
+import org.hyperledger.besu.crypto.SECPPublicKey;
+import org.hyperledger.besu.datatypes.AccountValue;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.GWei;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.StorageSlotKey;
+import org.hyperledger.besu.datatypes.TransactionType;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.BlockProcessingResult;
+import org.hyperledger.besu.ethereum.chain.Blockchain;
+import org.hyperledger.besu.ethereum.core.Block;
+import org.hyperledger.besu.ethereum.core.BlockDataGenerator;
+import org.hyperledger.besu.ethereum.core.BlockchainSetupUtil;
+import org.hyperledger.besu.ethereum.core.MutableWorldState;
+import org.hyperledger.besu.ethereum.core.TransactionReceipt;
+import org.hyperledger.besu.ethereum.core.TransactionTestFixture;
+import org.hyperledger.besu.ethereum.mainnet.BlockProcessor;
+import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier;
+import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.worldview.BonsaiWorldState;
+import org.hyperledger.besu.plugin.ServiceManager;
+import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.services.BlockImportTracerProvider;
+import org.hyperledger.besu.plugin.services.storage.DataStorageFormat;
+import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
+import org.hyperledger.besu.testutil.BlockTestUtil;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigInteger;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -21,33 +72,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-
-import net.consensys.shomei.cli.ShomeiCliOptions;
-import net.consensys.shomei.context.TestShomeiContext;
-import net.consensys.shomei.trielog.TrieLogValue;
-import net.consensys.shomei.trielog.ZkAccountValue;
-
-import java.math.BigInteger;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-
-import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.units.bigints.UInt256;
-import org.hyperledger.besu.datatypes.AccountValue;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.StorageSlotKey;
-import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.plugin.data.BlockHeader;
-import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
-import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 public class ZkBlockImportTracerProviderTest {
@@ -214,5 +238,117 @@ public class ZkBlockImportTracerProviderTest {
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
+  }
+
+
+  /**
+   * edge case assertion:
+   *   create2, with delegate call revert
+   */
+
+  @Test
+  public void transactionRevertsDueToDelegateCallFailure() {
+    // Set up test world state and blockchain
+    final BlockchainSetupUtil setupUtil = BlockchainSetupUtil.createForEthashChain(
+        new BlockTestUtil.ChainResources(
+        this.getClass().getClassLoader().getResource("zktestGenesis.json"),
+        BlockTestUtil.class.getClassLoader().getResource("chain.blocks")),
+        DataStorageFormat.BONSAI);
+    final Blockchain blockchain = setupUtil.getBlockchain();
+    final MutableWorldState worldState = setupUtil.getWorldArchive().getWorldState();
+
+    KeyPair genesisAccountKeyPair =
+        new KeyPair(
+            SECPPrivateKey.create(
+                Bytes32.fromHexString(
+                    "0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"),
+                "ECDSA"),
+            SECPPublicKey.create(
+                Bytes.fromHexString(
+                    "0x3a514176466fa815ed481ffad09110a2d344f6c9b78c1d14afc351c3a51be33d8072e77939dc03ba44790779b7a1025baf3003f6732430e20cd9b76d953391b3"),
+                "ECDSA"));
+
+
+    // Set up sender and failing target contract
+    final Address sender = Address.fromHexString("0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b");
+    //final Address target = Address.fromHexString("0xdeadbeef");
+
+    // 0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef contract configured in genesis alloc always reverts:
+    final Bytes proxyRuntime = Bytes.fromHexString(
+        // runtime: calldatacopy(0, 0, calldatasize())
+        "0x60006000" + // PUSH1 00 PUSH1 00
+            "37" +         // CALLDATACOPY
+            // delegatecall(gas, target, 0, calldatasize, 0, 0)
+            "6000" + "6000" + "6000" + "73deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" + "5af4" +
+            // if !success revert(0, 0)
+            "6000" + "6000" + "fd"
+    );
+
+    final Bytes initCode = Bytes.concatenate(Bytes.fromHexString(
+        "0x600c600c600039600c6000f3" // copy 12 bytes into memory and return as contract code
+    ), proxyRuntime); // init + runtime
+
+    final var createTx = new TransactionTestFixture()
+        .type(TransactionType.FRONTIER)
+        .nonce(0)
+        .gasLimit(3_000_000)
+        .gasPrice(GWei.ONE.getAsWei())
+        .sender(sender)
+        .chainId(setupUtil.getProtocolSchedule().getChainId())
+        .payload(initCode)
+        .createTransaction(genesisAccountKeyPair);
+
+
+    // Process block with this tx
+    final BlockDataGenerator gen = new BlockDataGenerator();
+    final Block block = gen.block(BlockDataGenerator.BlockOptions
+        .create()
+        .addTransaction(createTx)
+        .hasOmmers(false)
+        .setStateRoot(Hash.fromHexString("0x2be8c4a0e388c8fa9fa69277e64b4dc2ed2def16b9352231f6a66cfa3d3da01b"))
+    );
+    final BlockProcessor processor = setupUtil
+        .getProtocolSchedule()
+        .getByBlockHeader(
+            blockchain.getChainHeadHeader())
+        .getBlockProcessor();
+
+    var spyProtocolContext = spy(setupUtil.getProtocolContext());
+    var mockPluginServiceManager = mock(ServiceManager.class);
+    var zkTracerProviderSpy = spy(new ZkBlockImportTracerProvider(
+        testContext, () -> setupUtil.getProtocolSchedule().getChainId()));
+
+    AtomicReference<ZkTracer> capturedTracer = new AtomicReference<>();
+
+    doAnswer(invocation -> {
+      BlockAwareOperationTracer tracer = (BlockAwareOperationTracer) invocation.callRealMethod();
+      capturedTracer.set((ZkTracer) tracer);
+      return tracer;
+    }).when(zkTracerProviderSpy).getBlockImportTracer(any(BlockHeader.class));
+
+
+    doAnswer(__ -> Optional.of(zkTracerProviderSpy))
+        .when(mockPluginServiceManager)
+        .getService(BlockImportTracerProvider.class);
+    doAnswer(__ -> mockPluginServiceManager)
+        .when(spyProtocolContext)
+        .getPluginServiceManager();
+
+    final BlockProcessingResult result = processor.processBlock(
+        spyProtocolContext,
+        blockchain,
+        worldState,
+        block);
+
+    // Assert transaction is present
+    assertEquals(1, result.getReceipts().size());
+
+    // Check that status == 0 (reverted)
+    // final TransactionReceipt receipt = result.getReceipts().get(0);
+    //    assertEquals(Bytes32.ZERO, receipt.getStatus());
+
+    assertEquals(capturedTracer.get().getAddressesSeenByHubForRelativeBlock(1).size(),
+        worldState.updater().getTouchedAccounts().size());
+
   }
 }

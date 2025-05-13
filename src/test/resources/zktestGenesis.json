@@ -1,0 +1,23 @@
+{
+  "config": {
+    "chainId": 1,
+    "londonBlock": 0,
+    "ethash": {}
+  },
+  "nonce": "0x0",
+  "timestamp": "0x0",
+  "extraData": "0x",
+  "gasLimit": "0x4c4b40",
+  "difficulty": "0x1",
+  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "alloc": {
+    "a94f5374fce5edbc8e2a8697c15331677e6ebf0b": {
+      "balance": "0xffffffffffffffff"
+    },
+    "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef": {
+      "balance": "0x00",
+      "code": "0x60006000fd"
+    }
+  }
+}
