@@ -223,7 +223,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                           alert(
                               () ->
                                   LOG.warn(
-                                      "block {} hub account {} slot key {} value pre {} post {} is missing from accumulator modifications",
+                                      "block {} accumulator storage account {} slot key {} value pre {} post {} is missing from hub seen storage modifications",
                                       blockHeader.getNumber(),
                                       address.toHexString(),
                                       slotEntry
