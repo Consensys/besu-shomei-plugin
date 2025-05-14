@@ -41,6 +41,9 @@ import org.hyperledger.besu.ethereum.rlp.BytesValueRLPInput;
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 import org.hyperledger.besu.ethereum.rlp.RLPInput;
 import org.hyperledger.besu.ethereum.rlp.RLPOutput;
+import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedAccount;
+import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedValue;
+import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.accumulator.PathBasedWorldStateUpdateAccumulator;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog.LogTuple;
@@ -77,8 +80,9 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       var hubSeenDiff =
           ctx.getBlockImportTraceProvider().compareWithTrace(blockHeader, accumulator);
       if (isEnabled(comparisonFeatureMask.get(), DECORATE_FROM_HUB)) {
-        accountsToUpdate = decorateAccounts(accountsToUpdate, hubSeenDiff.adressesDiff());
-        storageToUpdate = decorateStorage(storageToUpdate, hubSeenDiff.storageDiff());
+        accountsToUpdate =
+            decorateAccounts(accountsToUpdate, hubSeenDiff.adressesDiff(), accumulator);
+        storageToUpdate = decorateStorage(storageToUpdate, hubSeenDiff.storageDiff(), accumulator);
       }
     }
 
@@ -98,12 +102,25 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   @SuppressWarnings("unchecked")
   Map<Address, LogTuple<AccountValue>> decorateAccounts(
       Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
-      Set<Address> hubSeenAccounts) {
+      Set<Address> hubSeenAccounts,
+      final TrieLogAccumulator accumulator) {
     final Map<Address, LogTuple<AccountValue>> decorated =
         new HashMap<>((Map<Address, LogTuple<AccountValue>>) accountsToUpdate);
-    for (var hubAccount : hubSeenAccounts) {
-      decorated.putIfAbsent(hubAccount, null);
+    if (accumulator
+        instanceof PathBasedWorldStateUpdateAccumulator<?> worldStateUpdateAccumulator) {
+      for (var hubAccount : hubSeenAccounts) {
+        decorated.computeIfAbsent(
+            hubAccount,
+            __ -> {
+              final PathBasedAccount account =
+                  (PathBasedAccount) worldStateUpdateAccumulator.getAccount(hubAccount);
+              return new PathBasedValue<>(account, account, false);
+            });
+      }
+    } else {
+      LOG.warn("ignoring incompatible accumulator for account {}", accumulator.getClass());
     }
+
     return decorated;
   }
 
@@ -112,24 +129,39 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> decorateStorage(
       Map<Address, ? extends Map<StorageSlotKey, ? extends TrieLog.LogTuple<UInt256>>>
           storageToUpdate,
-      Map<Address, Set<Bytes32>> hubSeenStorage) {
+      Map<Address, Set<Bytes32>> hubSeenStorage,
+      final TrieLogAccumulator accumulator) {
 
     Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> result =
         new HashMap<>((Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate);
+    if (accumulator
+        instanceof PathBasedWorldStateUpdateAccumulator<?> worldStateUpdateAccumulator) {
+      for (var seenStorage : hubSeenStorage.entrySet()) {
 
-    for (var seenStorage : hubSeenStorage.entrySet()) {
+        Map<StorageSlotKey, LogTuple<UInt256>> storageForAddress =
+            new HashMap<>(
+                Optional.ofNullable(
+                        (Map<StorageSlotKey, LogTuple<UInt256>>)
+                            storageToUpdate.get(seenStorage.getKey()))
+                    .orElse(new HashMap<>()));
 
-      Map<StorageSlotKey, LogTuple<UInt256>> storageForAddress =
-          new HashMap<>(
-              Optional.ofNullable(
-                      (Map<StorageSlotKey, LogTuple<UInt256>>)
-                          storageToUpdate.get(seenStorage.getKey()))
-                  .orElse(new HashMap<>()));
+        for (var slotKey : seenStorage.getValue()) {
+          final StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.fromBytes(slotKey));
 
-      for (var slotKey : seenStorage.getValue()) {
-        storageForAddress.putIfAbsent(new StorageSlotKey(UInt256.fromBytes(slotKey)), null);
+          storageForAddress.computeIfAbsent(
+              storageSlotKey,
+              __ -> {
+                final UInt256 storageValue =
+                    worldStateUpdateAccumulator
+                        .getStorageValueByStorageSlotKey(seenStorage.getKey(), storageSlotKey)
+                        .orElse(UInt256.ZERO);
+                return new PathBasedValue<>(storageValue, storageValue, false);
+              });
+        }
+        result.put(seenStorage.getKey(), storageForAddress);
       }
-      result.put(seenStorage.getKey(), storageForAddress);
+    } else {
+      LOG.warn("ignoring incompatible accumulator for storage {}", accumulator.getClass());
     }
     return result;
   }
