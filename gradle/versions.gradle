@@ -34,7 +34,8 @@ dependencyManagement {
         // Besu dependencies
         dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
         dependency "org.hyperledger.besu:besu-datatypes:${besuVersion}"
-        dependency "org.hyperledger.besu.internal:rlp:${besuVersion}"
+        dependency "org.hyperledger.besu:besu-core:${besuVersion}"
+        dependency "org.hyperledger.besu.internal:core:${besuVersion}"
 
         // arithmetization dependencies
         dependency "net.consensys.linea.zktracer:arithmetization:${arithmetizationVersion}"
@@ -84,6 +85,6 @@ dependencyManagement {
 
         dependency 'org.assertj:assertj-core:3.24.2'
 
-        dependency 'com.google.guava:guava:31.1-jre'
+        dependency 'com.google.guava:guava:33.4.0-jre'
     }
 }

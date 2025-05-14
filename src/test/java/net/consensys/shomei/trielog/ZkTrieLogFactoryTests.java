@@ -16,6 +16,7 @@ package net.consensys.shomei.trielog;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -37,9 +38,11 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.BonsaiAccount;
+import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedValue;
+import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.accumulator.PathBasedWorldStateUpdateAccumulator;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
-import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -146,12 +149,33 @@ public class ZkTrieLogFactoryTests {
     testCtx.setCliOptions(testOpts).setBlockImportTraceProvider(mockTraceProvider);
 
     // mock an accumulator
-    AccountValue mockPrior = new ZkAccountValue(1L, Wei.ZERO, Hash.EMPTY_TRIE_HASH, Hash.EMPTY);
-    var mockAccountMap = new HashMap<Address, TrieLogValue<AccountValue>>();
-    mockAccountMap.put(mockAddress2, new TrieLogValue<>(mockPrior, mockPrior, false));
+    AccountValue account =
+        new BonsaiAccount(
+            null,
+            mockAddress,
+            Hash.hash(mockAddress),
+            0,
+            Wei.ONE,
+            Hash.EMPTY_TRIE_HASH,
+            Hash.EMPTY,
+            false);
+    AccountValue account2 =
+        new BonsaiAccount(
+            null,
+            mockAddress2,
+            Hash.hash(mockAddress2),
+            0,
+            Wei.ZERO,
+            Hash.EMPTY_TRIE_HASH,
+            Hash.ZERO,
+            false);
+    ;
+    var mockAccountMap = new HashMap<Address, PathBasedValue<AccountValue>>();
+    mockAccountMap.put(mockAddress2, new PathBasedValue<>(account2, account2, false));
 
-    var mockStorageMap = new HashMap<Address, Map<StorageSlotKey, TrieLogValue<UInt256>>>();
-    var mockAccumulator = mock(TrieLogAccumulator.class, RETURNS_DEEP_STUBS);
+    var mockStorageMap = new HashMap<Address, Map<StorageSlotKey, PathBasedValue<UInt256>>>();
+    var mockAccumulator = mock(PathBasedWorldStateUpdateAccumulator.class, RETURNS_DEEP_STUBS);
+    doAnswer(__ -> account).when(mockAccumulator).getAccount(eq(mockAddress));
     doAnswer(__ -> mockAccountMap).when(mockAccumulator).getAccountsToUpdate();
     doAnswer(__ -> mockStorageMap).when(mockAccumulator).getStorageToUpdate();
 
@@ -166,11 +190,13 @@ public class ZkTrieLogFactoryTests {
 
     // assert hub added address is present (with no values)
     assertThat(trielog.getAccountChanges().containsKey(mockAddress)).isTrue();
-    assertThat(trielog.getAccountChanges().get(mockAddress)).isNull();
+    assertThat(trielog.getAccountChanges().get(mockAddress).getPrior()).isEqualTo(account);
+    assertThat(trielog.getAccountChanges().get(mockAddress).getUpdated()).isEqualTo(account);
 
     // assert accumulator address is still present
     assertThat(trielog.getAccountChanges().containsKey(mockAddress2)).isTrue();
-    assertThat(trielog.getAccountChanges().get(mockAddress2).getPrior()).isEqualTo(mockPrior);
+    assertThat(trielog.getAccountChanges().get(mockAddress2).getPrior()).isEqualTo(account2);
+    assertThat(trielog.getAccountChanges().get(mockAddress2).getUpdated()).isEqualTo(account2);
     var hubStorageChanges = trielog.getStorageChanges();
     assertThat(hubStorageChanges).isNotNull();
     assertThat(hubStorageChanges.isEmpty()).isFalse();

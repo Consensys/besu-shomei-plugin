@@ -201,6 +201,7 @@ dependencies {
     implementation 'org.hyperledger.besu.internal:rlp'
     implementation 'org.hyperledger.besu:plugin-api'
     implementation 'org.hyperledger.besu:besu-datatypes'
+    implementation 'org.hyperledger.besu.internal:core'
     implementation 'org.hyperledger.besu:evm'
     implementation 'info.picocli:picocli'
     implementation 'net.consensys.linea.zktracer:arithmetization'
@@ -218,6 +219,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-core'
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'io.vertx:vertx-junit5'
+    testImplementation 'com.google.guava:guava'
 }
 
 apply plugin: 'java'
