@@ -72,6 +72,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -250,7 +251,7 @@ public class ZkBlockImportTracerProviderTest {
 
   @Test
   public void assertTrieLogContainsHubStateOnNewContractSload() {
-    testContext.getCliOptions().zkTraceComparisonMask = 0;
+    testContext.getCliOptions().zkTraceComparisonMask = 15;
     var mockPluginServiceManager = mock(ServiceManager.class);
 
     // setup mock plugin service manager zktrielogfactory:
@@ -269,6 +270,10 @@ public class ZkBlockImportTracerProviderTest {
       return trielog;
     }).when(zkTrieLogFactoryImpl).create(any(TrieLogAccumulator.class), any(BlockHeader.class));
 
+    var zkTracerProviderSpy = spy(new ZkBlockImportTracerProvider(
+        testContext, () -> Optional.of(BigInteger.valueOf(59144L))));
+    testContext.setBlockImportTraceProvider(zkTracerProviderSpy);
+
 
     // Set up test world state and blockchain
     final BlockchainSetupUtil setupUtil = BlockchainSetupUtil.createForEthashChain(
@@ -281,8 +286,6 @@ public class ZkBlockImportTracerProviderTest {
     final MutableWorldState worldState = setupUtil.getWorldArchive().getWorldState();
 
     var spyProtocolContext = spy(setupUtil.getProtocolContext());
-    var zkTracerProviderSpy = spy(new ZkBlockImportTracerProvider(
-        testContext, () -> setupUtil.getProtocolSchedule().getChainId()));
 
     // setup zktracerprovider plugin service
     AtomicReference<ZkTracer> capturedTracer = new AtomicReference<>();
@@ -298,7 +301,6 @@ public class ZkBlockImportTracerProviderTest {
       return tracer;
     }).when(zkTracerProviderSpy).getBlockImportTracer(any(BlockHeader.class));
 
-    testContext.setBlockImportTraceProvider(zkTracerProviderSpy);
 
     var r = Bytes.fromHexString("0xde0db8ce81c8092823a2d91b3a3cc421bc6b384b562f567e67b26c5443ff28e9").toUnsignedBigInteger();
     var s = Bytes.fromHexString("0x44457e69f445284d1f1ba99107b53c1d4b3d1e8c7283ff504341e5a92699c09d").toUnsignedBigInteger();
@@ -359,6 +361,10 @@ public class ZkBlockImportTracerProviderTest {
     assertEquals(
         create2StorageSeen.size(),
         create2TrielogSeen.size());
-
+    // known reverted storage slot key:
+    final Bytes32 revertedSlotKey = Bytes32.fromHexString("0x322cf19c484104d3b1a9c2982ebae869ede3fa5f6c4703ca41b9a48c76ee0300");
+    assertTrue(create2StorageSeen.contains(revertedSlotKey));
+    var trieLogSlotVal = create2TrielogSeen.get(new StorageSlotKey(UInt256.fromBytes(revertedSlotKey)));
+    assertNotNull(trieLogSlotVal);
   }
 }
