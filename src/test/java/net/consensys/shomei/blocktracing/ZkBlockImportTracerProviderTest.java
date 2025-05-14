@@ -325,7 +325,8 @@ public class ZkBlockImportTracerProviderTest {
         .create()
         .addTransaction(tx)
         .hasOmmers(false)
-        .setStateRoot(Hash.fromHexString("0xc70a52d661bf92297e17d79b0cb04c508f3767acecf6145171884a82ea5e8a9d"))
+        //.setStateRoot(Hash.fromHexString("0xc70a52d661bf92297e17d79b0cb04c508f3767acecf6145171884a82ea5e8a9d"))
+        .setStateRoot(Hash.fromHexString("0x543543c7c19059bbc9c384ab7344bc281fe08938732480a1bc48d01e3ba8090b"))
     );
     final BlockProcessor processor = setupUtil
         .getProtocolSchedule()
