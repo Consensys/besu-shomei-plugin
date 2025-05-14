@@ -34,7 +34,6 @@ dependencyManagement {
         // Besu dependencies
         dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
         dependency "org.hyperledger.besu:besu-datatypes:${besuVersion}"
-        dependency "org.hyperledger.besu:besu-core:${besuVersion}"
         dependency "org.hyperledger.besu.internal:core:${besuVersion}"
 
         // arithmetization dependencies

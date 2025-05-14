@@ -201,8 +201,10 @@ dependencies {
     implementation 'org.hyperledger.besu.internal:rlp'
     implementation 'org.hyperledger.besu:plugin-api'
     implementation 'org.hyperledger.besu:besu-datatypes'
-    implementation 'org.hyperledger.besu.internal:core'
-    implementation 'org.hyperledger.besu:evm'
+    testImplementation 'org.hyperledger.besu.internal:core'
+    testImplementation 'org.hyperledger.besu:evm'
+    compileOnly 'org.hyperledger.besu.internal:core'
+    compileOnly 'org.hyperledger.besu:evm'
     implementation 'info.picocli:picocli'
     implementation 'net.consensys.linea.zktracer:arithmetization'
 
