@@ -16,6 +16,7 @@ package net.consensys.shomei.blocktracing;
 
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.ACCUMULATOR_TO_HUB;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.DECORATE_FROM_HUB;
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.FILTER_FROM_HUB;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.HUB_TO_ACCUMULATOR;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.MISMATCH_LOGGING;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.anyEnabled;
@@ -109,12 +110,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
    * @param blockHeader header for which we are writing a trace
    * @param accumulator bonsai accumulator we are filtering
    */
-  public HubSeenDiff compareWithTrace(
+  public HubDiffTuple compareWithTrace(
       final BlockHeader blockHeader, final TrieLogAccumulator accumulator) {
 
     // bail if genesis, we do not trace genesis block
     if (blockHeader.getNumber() == 0) {
-      return new HubSeenDiff(Collections.emptySet(), Collections.emptyMap());
+      return HubDiffTuple.EMPTY;
     }
 
     var current =
@@ -126,7 +127,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
           "Trace not found while attempting to compare block {}.  current trace block {}",
           headerLogString(blockHeader),
           current.map(t -> t.header).map(this::headerLogString).orElse("empty"));
-      return new HubSeenDiff(Collections.emptySet(), Collections.emptyMap());
+      return HubDiffTuple.EMPTY;
     }
 
     var zkTracerTuple = current.get();
@@ -135,21 +136,24 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     var hubAccountsSeen = zkTracerTuple.zkTracer.getAddressesSeenByHubForRelativeBlock(1);
     var hubStorageSeen = zkTracerTuple.zkTracer.getStoragesSeenByHubForRelativeBlock(1);
 
-    var hubAccountDiff = compareAndWarnAccount(blockHeader, accumulator, hubAccountsSeen);
+    var hubAccountDiffs = compareAndWarnAccount(blockHeader, accumulator, hubAccountsSeen);
 
     var hubStorageDiff = compareAndWarnStorage(blockHeader, accumulator, hubStorageSeen);
 
     LOG.debug("completed comparison for {}", headerLogString(blockHeader));
-    return new HubSeenDiff(hubAccountDiff, hubStorageDiff);
+    return new HubDiffTuple(
+        new HubSeenDiff(hubAccountDiffs.inHub, hubStorageDiff.inHub),
+        new HubSeenDiff(hubAccountDiffs.notInHub, hubStorageDiff.notInHub));
   }
 
   @VisibleForTesting
-  Map<Address, Set<Bytes32>> compareAndWarnStorage(
+  StorageDiffTuple compareAndWarnStorage(
       final BlockHeader blockHeader,
       final TrieLogAccumulator accumulator,
       final Map<Address, Set<Bytes32>> hubSeenStorage) {
 
-    final Map<Address, Set<Bytes32>> hubStorageDiff = new HashMap<>();
+    final Map<Address, Set<Bytes32>> hubStorageFoundDiff = new HashMap<>();
+    final Map<Address, Set<Bytes32>> hubStorageMissingDiff = new HashMap<>();
     final var storageToUpdate = accumulator.getStorageToUpdate();
     LOG.debug(
         "Block {} comparing hubSeen size {} to accumulator storage map size {}",
@@ -173,8 +177,8 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                               .map(Bytes32::toShortHexString)
                               .collect(Collectors.joining(","))));
               if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
-                // add all hubSeenSlots for this address to accumulator:
-                hubStorageDiff.put(address, hubSlots);
+                // add all hubSeenSlots for this address to diff map:
+                hubStorageFoundDiff.put(address, hubSlots);
               }
             } else {
               var missingSlots =
@@ -193,8 +197,10 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                                   blockHeader.getNumber(),
                                   address.toHexString(),
                                   slot.toHexString())));
-              // add missing hubSeenSlots for this address to accumulator
-              hubStorageDiff.put(address, missingSlots);
+              // add missing hubSeenSlots for this address to diff map
+              if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
+                hubStorageFoundDiff.put(address, missingSlots);
+              }
             }
           });
     }
@@ -205,54 +211,83 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
           (address, accumulatorSlots) -> {
             var hubSlots = hubSeenStorage.get(address);
             if (hubSlots == null) {
+              // account and all slots are missing:
               alert(
-                  () ->
-                      LOG.warn(
-                          "block {} accumulator storage account {} is missing from hub seen storage modifications",
-                          blockHeader.getNumber(),
-                          address.toHexString()));
+                  () -> {
+                    LOG.warn(
+                        "block {} accumulator storage account {} is missing from hub seen storage modifications",
+                        blockHeader.getNumber(),
+                        address.toHexString());
+                    if (anyEnabled(featureMask.get(), FILTER_FROM_HUB)) {
+                      // add all accumulator slots for this address to diff map:
+                      hubStorageMissingDiff.put(
+                          address,
+                          accumulatorSlots.keySet().stream()
+                              .map(StorageSlotKey::getSlotKey)
+                              .filter(Optional::isPresent)
+                              .map(Optional::get)
+                              .map(UInt256::toBytes)
+                              .collect(Collectors.toSet()));
+                    }
+                  });
             } else {
-              accumulatorSlots.entrySet().stream()
-                  .filter(
-                      slotEntry ->
-                          slotEntry.getKey().getSlotKey().isPresent()
-                              && !hubSlots.contains(
-                                  slotEntry.getKey().getSlotKey().get().toBytes()))
-                  .forEach(
-                      slotEntry ->
-                          alert(
-                              () ->
-                                  LOG.warn(
-                                      "block {} accumulator storage account {} slot key {} value pre {} post {} is missing from hub seen storage modifications",
-                                      blockHeader.getNumber(),
-                                      address.toHexString(),
-                                      slotEntry
-                                          .getKey()
-                                          .getSlotKey()
-                                          .map(Bytes::toHexString)
-                                          .orElse(
-                                              "hash::"
-                                                  + slotEntry.getKey().getSlotHash().toHexString()),
-                                      Optional.ofNullable(slotEntry.getValue().getUpdated())
-                                          .map(UInt256::toShortHexString)
-                                          .orElse("null"),
-                                      Optional.ofNullable(slotEntry.getValue().getPrior())
-                                          .map(UInt256::toShortHexString)
-                                          .orElse("null"))));
+              // account present, but some slots are missing:
+              var missingSlots =
+                  accumulatorSlots.entrySet().stream()
+                      .filter(
+                          slotEntry ->
+                              slotEntry.getKey().getSlotKey().isPresent()
+                                  && !hubSlots.contains(
+                                      slotEntry.getKey().getSlotKey().get().toBytes()))
+                      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+              // add missing hubSeenSlots for this address to accumulator
+              if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
+                hubStorageMissingDiff.put(
+                    address,
+                    missingSlots.keySet().stream()
+                        .map(StorageSlotKey::getSlotKey)
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .map(UInt256::toBytes)
+                        .collect(Collectors.toSet()));
+              }
+
+              // alert on missing slots
+              missingSlots.forEach(
+                  (storageSlotKey, slotVal) ->
+                      alert(
+                          () ->
+                              LOG.warn(
+                                  "block {} accumulator storage account {} slot key {} value pre {} post {} is missing from hub seen storage modifications",
+                                  blockHeader.getNumber(),
+                                  address.toHexString(),
+                                  storageSlotKey
+                                      .getSlotKey()
+                                      .map(Bytes::toHexString)
+                                      .orElse(
+                                          "hash::" + storageSlotKey.getSlotHash().toHexString()),
+                                  Optional.ofNullable(slotVal.getUpdated())
+                                      .map(UInt256::toShortHexString)
+                                      .orElse("null"),
+                                  Optional.ofNullable(slotVal.getPrior())
+                                      .map(UInt256::toShortHexString)
+                                      .orElse("null"))));
             }
           });
     }
 
-    return hubStorageDiff;
+    return new StorageDiffTuple(hubStorageFoundDiff, hubStorageMissingDiff);
   }
 
   @VisibleForTesting
-  Set<Address> compareAndWarnAccount(
+  AccountDiffTuple compareAndWarnAccount(
       final BlockHeader blockHeader,
       final TrieLogAccumulator accumulator,
       final Set<Address> hubSeenAddresses) {
 
-    Set<Address> hubAccountsDiff = new HashSet<>();
+    Set<Address> hubAccountsFoundDiff = new HashSet<>();
+    Set<Address> hubAccountsMissingDiff = new HashSet<>();
     var accountsToUpdate = accumulator.getAccountsToUpdate();
     LOG.debug(
         "Block {} comparing hubSeen size {} to accumulator account map size {}",
@@ -272,27 +307,31 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                             blockHeader.getNumber(),
                             hubAddress.toHexString()));
                 if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
-                  hubAccountsDiff.add(hubAddress);
+                  hubAccountsFoundDiff.add(hubAddress);
                 }
               });
     }
 
     // Accounts in accountsToUpdate but missing from hubSeen
-    if (anyEnabled(featureMask.get(), ACCUMULATOR_TO_HUB)) {
+    if (anyEnabled(featureMask.get(), ACCUMULATOR_TO_HUB, FILTER_FROM_HUB)) {
 
       Sets.difference(accountsToUpdate.keySet(), hubSeenAddresses)
           .forEach(
-              accountAddress ->
-                  alert(
-                      () ->
-                          LOG.warn(
-                              "block {} accumulator address to update {} is missing from hub seen accounts, diff: {} ",
-                              blockHeader.getNumber(),
-                              accountAddress.toHexString(),
-                              accountDiffString(accountsToUpdate.get(accountAddress)))));
+              accountAddress -> {
+                alert(
+                    () ->
+                        LOG.warn(
+                            "block {} accumulator address to update {} is missing from hub seen accounts, diff: {} ",
+                            blockHeader.getNumber(),
+                            accountAddress.toHexString(),
+                            accountDiffString(accountsToUpdate.get(accountAddress))));
+                if (anyEnabled(featureMask.get(), FILTER_FROM_HUB)) {
+                  hubAccountsMissingDiff.add(accountAddress);
+                }
+              });
     }
 
-    return hubAccountsDiff;
+    return new AccountDiffTuple(hubAccountsFoundDiff, hubAccountsMissingDiff);
   }
 
   /**
@@ -385,5 +424,16 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
   public record HeaderTracerTuple(BlockHeader header, ZkTracer zkTracer) {}
 
-  public record HubSeenDiff(Set<Address> adressesDiff, Map<Address, Set<Bytes32>> storageDiff) {}
+  record AccountDiffTuple(Set<Address> inHub, Set<Address> notInHub) {}
+
+  record StorageDiffTuple(Map<Address, Set<Bytes32>> inHub, Map<Address, Set<Bytes32>> notInHub) {}
+
+  public record HubSeenDiff(Set<Address> adressesDiff, Map<Address, Set<Bytes32>> storageDiff) {
+    static final HubSeenDiff EMPTY =
+        new HubSeenDiff(Collections.emptySet(), Collections.emptyMap());
+  }
+
+  public record HubDiffTuple(HubSeenDiff foundInHub, HubSeenDiff notFoundInHub) {
+    static final HubDiffTuple EMPTY = new HubDiffTuple(HubSeenDiff.EMPTY, HubSeenDiff.EMPTY);
+  }
 }

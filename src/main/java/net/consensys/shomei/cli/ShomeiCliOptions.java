@@ -81,7 +81,8 @@ public class ShomeiCliOptions {
     MISMATCH_LOGGING(1),
     HUB_TO_ACCUMULATOR(2),
     ACCUMULATOR_TO_HUB(4),
-    DECORATE_FROM_HUB(8);
+    DECORATE_FROM_HUB(8),
+    FILTER_FROM_HUB(16);
 
     private final int bit;
 
@@ -135,6 +136,7 @@ public class ShomeiCliOptions {
         "2 = compare HUB→ACCUMULATOR",
         "4 = compare ACCUMULATOR→HUB",
         "8 = DECORATE ACCUMULATOR FROM HUB.",
+        "16 = FILTER ACCUMULATOR BY HUB.",
         "Add values (e.g., 3 = LOGGING + HUB→ACC, default no comparison enabled)."
       })
   public int zkTraceComparisonMask = 0;
