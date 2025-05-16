@@ -15,6 +15,7 @@
 package net.consensys.shomei.trielog;
 
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.DECORATE_FROM_HUB;
+import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.FILTER_FROM_HUB;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.isEnabled;
 
 import net.consensys.shomei.context.ShomeiContext;
@@ -28,7 +29,9 @@ import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -81,8 +84,15 @@ public class ZkTrieLogFactory implements TrieLogFactory {
           ctx.getBlockImportTraceProvider().compareWithTrace(blockHeader, accumulator);
       if (isEnabled(comparisonFeatureMask.get(), DECORATE_FROM_HUB)) {
         accountsToUpdate =
-            decorateAccounts(accountsToUpdate, hubSeenDiff.adressesDiff(), accumulator);
-        storageToUpdate = decorateStorage(storageToUpdate, hubSeenDiff.storageDiff(), accumulator);
+            decorateAccounts(
+                accountsToUpdate, hubSeenDiff.foundInHub().adressesDiff(), accumulator);
+        storageToUpdate =
+            decorateStorage(storageToUpdate, hubSeenDiff.foundInHub().storageDiff(), accumulator);
+      }
+      if (isEnabled(comparisonFeatureMask.get(), FILTER_FROM_HUB)) {
+        accountsToUpdate =
+            filterAccounts(accountsToUpdate, hubSeenDiff.notFoundInHub().adressesDiff());
+        storageToUpdate = filterStorage(storageToUpdate, hubSeenDiff.notFoundInHub().storageDiff());
       }
     }
 
@@ -100,7 +110,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
   /* safe map decorator, in case the map we are provided is immutable */
   @SuppressWarnings("unchecked")
-  Map<Address, LogTuple<AccountValue>> decorateAccounts(
+  static Map<Address, LogTuple<AccountValue>> decorateAccounts(
       Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
       Set<Address> hubSeenAccounts,
       final TrieLogAccumulator accumulator) {
@@ -124,9 +134,18 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     return decorated;
   }
 
+  @VisibleForTesting
+  static Map<Address, ? extends LogTuple<? extends AccountValue>> filterAccounts(
+      Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
+      Set<Address> hubNotSeenAccounts) {
+    return accountsToUpdate.entrySet().stream()
+        .filter(accumulatorEntry -> !hubNotSeenAccounts.contains(accumulatorEntry.getKey()))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
   /* safe map decorator which also solves challenges with generics */
   @SuppressWarnings("unchecked")
-  Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> decorateStorage(
+  static Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> decorateStorage(
       Map<Address, ? extends Map<StorageSlotKey, ? extends TrieLog.LogTuple<UInt256>>>
           storageToUpdate,
       Map<Address, Set<Bytes32>> hubSeenStorage,
@@ -164,6 +183,58 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       LOG.warn("ignoring incompatible accumulator for storage {}", accumulator.getClass());
     }
     return result;
+  }
+
+  @VisibleForTesting
+  static Map<Address, Map<StorageSlotKey, ? extends LogTuple<UInt256>>> filterStorage(
+      Map<Address, ? extends Map<StorageSlotKey, ? extends TrieLog.LogTuple<UInt256>>>
+          storageToUpdate,
+      Map<Address, Set<Bytes32>> hubNotSeenStorage) {
+
+    return storageToUpdate.entrySet().stream()
+        .map(
+            entry -> {
+              Address address = entry.getKey();
+              Set<Bytes32> notSeenSlots = hubNotSeenStorage.get(address);
+              if (notSeenSlots == null) {
+                return entry;
+              }
+
+              // Filter the inner storage map by presence in seenSlots
+              Map<StorageSlotKey, LogTuple<UInt256>> filteredSlots =
+                  entry.getValue().entrySet().stream()
+                      .filter(
+                          slotEntry -> {
+                            var trieLogVal = slotEntry.getValue();
+                            var trieLogKey = slotEntry.getKey();
+                            if (!trieLogVal.isUnchanged()) {
+                              // refuse to remove a written value and log an error:
+                              LOG.error(
+                                  "refusing to filter slot value write, "
+                                      + "address: {}, slot key: {}, prior: {}, updated: {}",
+                                  address.toHexString(),
+                                  trieLogKey.getSlotKey().map(UInt256::toHexString).orElse("empty"),
+                                  Optional.ofNullable(trieLogVal.getPrior())
+                                      .map(UInt256::toHexString)
+                                      .orElse("null"),
+                                  Optional.ofNullable(trieLogVal.getUpdated())
+                                      .map(UInt256::toHexString)
+                                      .orElse("null"));
+                              return true;
+                            }
+                            // otherwise check to see if this is marked for removal in the diff:
+                            return trieLogKey
+                                .getSlotKey()
+                                .map(UInt256::toBytes)
+                                .filter(notSeenSlots::contains)
+                                .isEmpty();
+                          })
+                      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+              return Map.entry(address, filteredSlots);
+            })
+        .filter(e -> !e.getValue().isEmpty())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   @Override
