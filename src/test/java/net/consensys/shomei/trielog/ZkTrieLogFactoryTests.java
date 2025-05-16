@@ -233,7 +233,7 @@ public class ZkTrieLogFactoryTests {
             Set.of(mockAddress),
             Map.of(
                 mockAddress, Set.of(UInt256.ZERO, UInt256.ONE),
-                mockAddress2, Set.of(UInt256.ZERO)));
+                mockAddress2, Set.of(UInt256.ZERO, UInt256.MAX_VALUE)));
     var mockDiffTuple =
         new ZkBlockImportTracerProvider.HubDiffTuple(
             new HubSeenDiff(Collections.emptySet(), Collections.emptyMap()), mockDiff);
@@ -260,7 +260,9 @@ public class ZkTrieLogFactoryTests {
         mockAddress2,
         Map.of(
             new StorageSlotKey(UInt256.ZERO), new PathBasedValue<>(UInt256.ZERO, UInt256.ZERO),
-            new StorageSlotKey(UInt256.ONE), new PathBasedValue<>(UInt256.ZERO, UInt256.ONE)));
+            new StorageSlotKey(UInt256.ONE), new PathBasedValue<>(UInt256.ZERO, UInt256.ONE),
+            new StorageSlotKey(UInt256.MAX_VALUE),
+                new PathBasedValue<>(UInt256.ZERO, UInt256.ONE)));
     mockStorageMap.put(
         mockAddress3,
         Map.of(new StorageSlotKey(UInt256.ZERO), new PathBasedValue<>(UInt256.ZERO, UInt256.ZERO)));
@@ -286,8 +288,10 @@ public class ZkTrieLogFactoryTests {
     // assert we partially filtered mockAddress2 storage
     var address2StorageChanges = trielog.getStorageChanges().get(mockAddress2);
     assertNotNull(address2StorageChanges);
-    assertThat(address2StorageChanges.size()).isEqualTo(1);
+    assertThat(address2StorageChanges.size()).isEqualTo(2);
     assertTrue(address2StorageChanges.containsKey(new StorageSlotKey(UInt256.ONE)));
+    // assert we refused to filter a changed slot value:
+    assertTrue(address2StorageChanges.containsKey(new StorageSlotKey(UInt256.MAX_VALUE)));
 
     // assert we did not filter mockAddress3 storage
     var address3StorageChanges = trielog.getStorageChanges().get(mockAddress3);

@@ -204,13 +204,31 @@ public class ZkTrieLogFactory implements TrieLogFactory {
               Map<StorageSlotKey, LogTuple<UInt256>> filteredSlots =
                   entry.getValue().entrySet().stream()
                       .filter(
-                          slotEntry ->
-                              slotEntry
-                                  .getKey()
-                                  .getSlotKey()
-                                  .map(UInt256::toBytes)
-                                  .filter(notSeenSlots::contains)
-                                  .isEmpty())
+                          slotEntry -> {
+                            var trieLogVal = slotEntry.getValue();
+                            var trieLogKey = slotEntry.getKey();
+                            if (!trieLogVal.isUnchanged()) {
+                              // refuse to remove a written value and log an error:
+                              LOG.error(
+                                  "refusing to filter slot value write, "
+                                      + "address: {}, slot key: {}, prior: {}, updated: {}",
+                                  address.toHexString(),
+                                  trieLogKey.getSlotKey().map(UInt256::toHexString).orElse("empty"),
+                                  Optional.ofNullable(trieLogVal.getPrior())
+                                      .map(UInt256::toHexString)
+                                      .orElse("null"),
+                                  Optional.ofNullable(trieLogVal.getUpdated())
+                                      .map(UInt256::toHexString)
+                                      .orElse("null"));
+                              return true;
+                            }
+                            // otherwise check to see if this is marked for removal in the diff:
+                            return trieLogKey
+                                .getSlotKey()
+                                .map(UInt256::toBytes)
+                                .filter(notSeenSlots::contains)
+                                .isEmpty();
+                          })
                       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
               return Map.entry(address, filteredSlots);
