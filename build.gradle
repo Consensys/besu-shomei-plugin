@@ -205,6 +205,13 @@ dependencies {
     testImplementation 'org.hyperledger.besu:evm'
     compileOnly 'org.hyperledger.besu.internal:core'
     compileOnly 'org.hyperledger.besu:evm'
+    testImplementation "org.hyperledger.besu.internal:testutil"
+    testImplementation "org.hyperledger.besu.internal:algorithms"
+    
+    // pull in testSupport
+    testImplementation "org.hyperledger.besu.internal:core:${besuVersion}:test-support@jar"
+
+
     implementation 'info.picocli:picocli'
     implementation 'net.consensys.linea.zktracer:arithmetization'
 
