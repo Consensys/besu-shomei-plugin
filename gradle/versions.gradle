@@ -15,13 +15,6 @@
 
 dependencyManagement {
     dependencies {
-//        // jackson
-//        dependencySet(group: 'com.fasterxml.jackson.core', version : '2.18.2') {
-//            entry 'jackson-annotations'
-//            entry 'jackson-core'
-//            entry 'jackson-databind'
-//        }
-
         // Error prone dependencies
         dependencySet(group: 'com.google.errorprone', version: '2.18.0') {
             entry 'error_prone_annotation'
