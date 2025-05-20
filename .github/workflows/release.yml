@@ -59,3 +59,13 @@ jobs:
           asset_path: ./build/libs/besu-shomei-plugin-${{ steps.get_version.outputs.VERSION }}.jar
           asset_name: besu-shomei-plugin-${{ steps.get_version.outputs.VERSION }}.jar
           asset_content_type: application/octet-stream
+      - name: Upload Test Support JAR
+        id: upload-test-support-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/libs/besu-shomei-plugin-${{ steps.get_version.outputs.VERSION }}-test-support.jar
+          asset_name: besu-shomei-plugin-${{ steps.get_version.outputs.VERSION }}-test-support.jar
+          asset_content_type: application/octet-stream
