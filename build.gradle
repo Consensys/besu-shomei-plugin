@@ -185,7 +185,24 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
+sourceSets {
+    testSupport {
+        java {
+            srcDir 'src/testSupport/java'
+        }
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    testSupportImplementation
+    testSupportRuntimeOnly
+}
+
 dependencies {
+    testImplementation sourceSets.testSupport.output
+
     // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
     annotationProcessor 'com.google.auto.service:auto-service'
     compileOnly 'com.google.auto.service:auto-service-annotations'
@@ -204,10 +221,11 @@ dependencies {
     testImplementation 'org.hyperledger.besu.internal:core'
     testImplementation 'org.hyperledger.besu:evm'
     compileOnly 'org.hyperledger.besu.internal:core'
+    compileOnly 'org.hyperledger.besu.internal:core'
     compileOnly 'org.hyperledger.besu:evm'
     testImplementation "org.hyperledger.besu.internal:testutil"
     testImplementation "org.hyperledger.besu.internal:algorithms"
-    
+
     // pull in testSupport
     testImplementation "org.hyperledger.besu.internal:core:${besuVersion}:test-support@jar"
 
@@ -253,6 +271,14 @@ jar {
 test {
     useJUnitPlatform()
 }
+
+task testSupportJar(type: Jar) {
+    archiveClassifier.set("test-support")
+    from sourceSets.testSupport.output
+    description = "Packages the test implementation classes"
+    group = "build"
+}
+build.dependsOn(testSupportJar)
 
 task plugin(dependsOn: 'jar') {
     group 'build'
