@@ -37,12 +37,12 @@ dependencyManagement {
 
 
         // Logging dependencies
-        dependencySet(group: 'org.apache.logging.log4j', version: '2.20.0') {
+        dependencySet(group: 'org.apache.logging.log4j', version: '2.24.3') {
             entry 'log4j-api'
             entry 'log4j-core'
             entry 'log4j-slf4j2-impl'
         }
-        dependency 'org.slf4j:slf4j-api:2.0.6'
+        dependency 'org.slf4j:slf4j-api:2.0.16'
 
         // auto service
         dependencySet(group: 'com.google.auto.service', version: '1.0.1') {
