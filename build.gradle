@@ -205,40 +205,44 @@ dependencies {
 
     // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
     annotationProcessor 'com.google.auto.service:auto-service'
-    compileOnly 'com.google.auto.service:auto-service-annotations'
-    compileOnly 'com.google.guava:guava'
-
     errorprone("com.google.errorprone:error_prone_core")
     errorprone("tech.pegasys.tools.epchecks:errorprone-checks")
 
-    api 'org.slf4j:slf4j-api'
-    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
-    implementation 'org.apache.logging.log4j:log4j-core'
-
-    implementation 'org.hyperledger.besu.internal:rlp'
-    implementation 'org.hyperledger.besu:plugin-api'
-    implementation 'org.hyperledger.besu:besu-datatypes'
-    testImplementation 'org.hyperledger.besu.internal:core'
-    testImplementation 'org.hyperledger.besu:evm'
-    compileOnly 'org.hyperledger.besu.internal:core'
+    // Dependencies provided by BESU at runtime
+    compileOnly 'com.google.auto.service:auto-service-annotations'
+    compileOnly 'com.google.guava:guava'
+    compileOnly 'org.slf4j:slf4j-api'
+    compileOnly 'info.picocli:picocli'
+    compileOnly 'io.vertx:vertx-web-client'
+    compileOnly 'io.vertx:vertx-web'
+    compileOnly 'org.apache.logging.log4j:log4j-slf4j2-impl'
+    compileOnly 'org.apache.logging.log4j:log4j-core'
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
+    compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
+    compileOnly 'org.hyperledger.besu.internal:rlp'
+    compileOnly 'org.hyperledger.besu:plugin-api'
+    compileOnly 'org.hyperledger.besu:besu-datatypes'
     compileOnly 'org.hyperledger.besu.internal:core'
     compileOnly 'org.hyperledger.besu:evm'
+
+    // This will be provided by besu package
+    compileOnly 'net.consensys.linea.zktracer:arithmetization'
+
+    testImplementation 'io.vertx:vertx-web-client'
+    testImplementation 'io.vertx:vertx-web'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation 'com.fasterxml.jackson.core:jackson-annotations'
+    testImplementation 'net.consensys.linea.zktracer:arithmetization'
+    testImplementation 'org.slf4j:slf4j-api'
+    testImplementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
+    testImplementation 'org.apache.logging.log4j:log4j-core'
+    testImplementation 'org.hyperledger.besu.internal:rlp'
+    testImplementation 'org.hyperledger.besu:plugin-api'
+    testImplementation 'org.hyperledger.besu:besu-datatypes'
     testImplementation "org.hyperledger.besu.internal:testutil"
     testImplementation "org.hyperledger.besu.internal:algorithms"
-
-    // pull in testSupport
-    testImplementation "org.hyperledger.besu.internal:core:${besuVersion}:test-support@jar"
-
-
-    implementation 'info.picocli:picocli'
-    implementation 'net.consensys.linea.zktracer:arithmetization'
-
-    implementation 'io.vertx:vertx-web-client'
-    implementation 'io.vertx:vertx-web'
-
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-
+    testImplementation 'org.hyperledger.besu.internal:core'
+    testImplementation 'org.hyperledger.besu:evm'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
@@ -247,6 +251,9 @@ dependencies {
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'io.vertx:vertx-junit5'
     testImplementation 'com.google.guava:guava'
+
+    // pull in testSupport
+    testImplementation "org.hyperledger.besu.internal:core:${besuVersion}:test-support@jar"
 }
 
 apply plugin: 'java'
