@@ -207,7 +207,14 @@ public class ZkTrieLogFactory implements TrieLogFactory {
                           slotEntry -> {
                             var trieLogVal = slotEntry.getValue();
                             var trieLogKey = slotEntry.getKey();
-                            if (!trieLogVal.isUnchanged()) {
+                            var shouldFilter =
+                                trieLogKey
+                                    .getSlotKey()
+                                    .map(UInt256::toBytes)
+                                    .filter(notSeenSlots::contains)
+                                    .isPresent();
+
+                            if (shouldFilter && !trieLogVal.isUnchanged()) {
                               // refuse to remove a written value and log an error:
                               LOG.error(
                                   "refusing to filter slot value write, "
@@ -222,12 +229,8 @@ public class ZkTrieLogFactory implements TrieLogFactory {
                                       .orElse("null"));
                               return true;
                             }
-                            // otherwise check to see if this is marked for removal in the diff:
-                            return trieLogKey
-                                .getSlotKey()
-                                .map(UInt256::toBytes)
-                                .filter(notSeenSlots::contains)
-                                .isEmpty();
+                            // otherwise, filter from stream:
+                            return !shouldFilter;
                           })
                       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
