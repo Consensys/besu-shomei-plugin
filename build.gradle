@@ -263,10 +263,10 @@ jar {
 
     manifest {
         attributes(
-                'Specification-Title': 'arithmetization',
-                'Specification-Version': "${arithmetizationVersion}",
-                'Implementation-Title': 'arithmetization',
-                'Implementation-Version': "${arithmetizationVersion}"
+                'Specification-Title': archiveBaseName.get(),
+                'Specification-Version': rootProject.version,
+                'Implementation-Title': archiveBaseName.get(),
+                'Implementation-Version': calculateVersion()
         )
     }
 
