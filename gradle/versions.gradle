@@ -14,6 +14,9 @@
  */
 
 dependencyManagement {
+    imports {
+        mavenBom "org.hyperledger.besu:bom:${besuVersion}"
+    }
     dependencies {
         // Error prone dependencies
         dependencySet(group: 'com.google.errorprone', version: '2.18.0') {
@@ -24,39 +27,12 @@ dependencyManagement {
         }
         dependency 'tech.pegasys.tools.epchecks:errorprone-checks:1.1.1'
 
-        // Besu dependencies
-        dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
-        dependency "org.hyperledger.besu:besu-datatypes:${besuVersion}"
-        dependency "org.hyperledger.besu.internal:core:${besuVersion}"
-        dependency "org.hyperledger.besu.internal:testutil:${besuVersion}"
-        dependency "org.hyperledger.besu.internal:algorithms:${besuVersion}"
-
-
         // arithmetization dependencies
         dependency "net.consensys.linea.zktracer:arithmetization:${arithmetizationVersion}"
 
-
-        // Logging dependencies
-        dependencySet(group: 'org.apache.logging.log4j', version: '2.24.3') {
-            entry 'log4j-api'
-            entry 'log4j-core'
-            entry 'log4j-slf4j2-impl'
-        }
-        dependency 'org.slf4j:slf4j-api:2.0.16'
-
         // auto service
-        dependencySet(group: 'com.google.auto.service', version: '1.0.1') {
+        dependencySet(group: 'com.google.auto.service', version: '1.1.1') {
             entry 'auto-service-annotations'
-            entry 'auto-service'
-        }
-
-        // vertx - match Besu's version
-        dependencySet(group: 'io.vertx', version: '4.3.5') {
-            entry 'vertx-core'
-            entry 'vertx-junit5'
-            entry 'vertx-unit'
-            entry 'vertx-web'
-            entry 'vertx-web-client'
         }
 
         // junit
@@ -73,13 +49,6 @@ dependencyManagement {
             entry 'mockito-junit-jupiter'
         }
 
-        dependencySet(group: 'info.picocli', version: '4.7.1') {
-            entry 'picocli'
-            entry 'picocli-codegen'
-        }
-
         dependency 'org.assertj:assertj-core:3.24.2'
-
-        dependency 'com.google.guava:guava:33.4.0-jre'
     }
 }
