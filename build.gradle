@@ -213,7 +213,7 @@ dependencies {
     compileOnly 'com.google.guava:guava'
     compileOnly 'org.slf4j:slf4j-api'
     compileOnly 'info.picocli:picocli'
-    compileOnly 'io.vertx:vertx-web-client'
+    implementation 'io.vertx:vertx-web-client'
     compileOnly 'io.vertx:vertx-web'
     compileOnly 'org.apache.logging.log4j:log4j-slf4j2-impl'
     compileOnly 'org.apache.logging.log4j:log4j-core'
