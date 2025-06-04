@@ -213,7 +213,8 @@ dependencies {
     compileOnly 'com.google.guava:guava'
     compileOnly 'org.slf4j:slf4j-api'
     compileOnly 'info.picocli:picocli'
-    implementation 'io.vertx:vertx-web-client'
+    implementation('io.vertx:vertx-web-client') { transitive = false }
+    implementation('io.vertx:vertx-uri-template') { transitive = false }
     compileOnly 'io.vertx:vertx-web'
     compileOnly 'org.apache.logging.log4j:log4j-slf4j2-impl'
     compileOnly 'org.apache.logging.log4j:log4j-core'
@@ -228,7 +229,6 @@ dependencies {
     // This will be provided by besu package
     compileOnly 'net.consensys.linea.zktracer:arithmetization'
 
-    testImplementation 'io.vertx:vertx-web-client'
     testImplementation 'io.vertx:vertx-web'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
     testImplementation 'com.fasterxml.jackson.core:jackson-annotations'
