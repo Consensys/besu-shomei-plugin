@@ -71,7 +71,7 @@ public class ShomeiCliOptions {
       hidden = true,
       defaultValue = "1",
       paramLabel = "<INTEGER>",
-      description = "HTTP host port to push shomei trielogs to")
+      description = "Skip zk-tracing until the specified block height")
   public Integer zkSkipTraceUntil = DEFAULT_SHOMEI_SKIP_UNTIL_BLOCK;
 
   /*
