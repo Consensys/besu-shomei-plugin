@@ -198,6 +198,41 @@ sourceSets {
 configurations {
     testSupportImplementation
     testSupportRuntimeOnly
+
+    all {
+        // transitive versions conflict new Besu coordinates
+        exclude group: 'org.hyperledger.besu.internal', module: 'dsl'
+        exclude group: 'org.hyperledger.besu.internal', module: 'besu'
+        exclude group: 'org.hyperledger.besu.internal', module: 'config'
+        exclude group: 'org.hyperledger.besu.internal', module: 'clique'
+        exclude group: 'org.hyperledger.besu.internal', module: 'common'
+        exclude group: 'org.hyperledger.besu.internal', module: 'ibft'
+        exclude group: 'org.hyperledger.besu.internal', module: 'ibftlegacy'
+        exclude group: 'org.hyperledger.besu.internal', module: 'merge'
+        exclude group: 'org.hyperledger.besu.internal', module: 'qbft'
+        exclude group: 'org.hyperledger.besu.internal', module: 'qbft-core'
+        exclude group: 'org.hyperledger.besu.internal', module: 'algorithms'
+        exclude group: 'org.hyperledger.besu.internal', module: 'services'
+        exclude group: 'org.hyperledger.besu.internal', module: 'api'
+        exclude group: 'org.hyperledger.besu.internal', module: 'blockcreation'
+        exclude group: 'org.hyperledger.besu.internal', module: 'core'
+        exclude group: 'org.hyperledger.besu.internal', module: 'eth'
+        exclude group: 'org.hyperledger.besu.internal', module: 'p2p'
+        exclude group: 'org.hyperledger.besu.internal', module: 'permissioning'
+        exclude group: 'org.hyperledger.besu.internal', module: 'referencetests'
+        exclude group: 'org.hyperledger.besu.internal', module: 'rlp'
+        exclude group: 'org.hyperledger.besu.internal', module: 'trie'
+        exclude group: 'org.hyperledger.besu', module: 'evm'
+        exclude group: 'org.hyperledger.besu.internal', module: 'metrics-core'
+        exclude group: 'org.hyperledger.besu', module: 'plugin-api'
+        exclude group: 'org.hyperledger.besu.internal', module: 'testutil'
+        exclude group: 'org.hyperledger.besu.internal', module: 'util'
+        exclude group: 'org.hyperledger.besu.internal', module: 'nat'
+        exclude group: 'org.hyperledger.besu.internal', module: 'tasks'
+        exclude group: 'org.hyperledger.besu.internal', module: 'pipeline'
+        exclude group: 'org.hyperledger.besu.internal', module: 'kvstore'
+        exclude group: 'org.hyperledger.besu.internal', module: 'enclave'
+    }
 }
 
 dependencies {
@@ -219,11 +254,11 @@ dependencies {
     compileOnly 'org.apache.logging.log4j:log4j-core'
     compileOnly 'com.fasterxml.jackson.core:jackson-databind'
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
-    compileOnly 'org.hyperledger.besu.internal:rlp'
-    compileOnly 'org.hyperledger.besu:plugin-api'
+    compileOnly 'org.hyperledger.besu.internal:besu-ethereum-rlp'
+    compileOnly 'org.hyperledger.besu:besu-plugin-api'
     compileOnly 'org.hyperledger.besu:besu-datatypes'
-    compileOnly 'org.hyperledger.besu.internal:core'
-    compileOnly 'org.hyperledger.besu:evm'
+    compileOnly 'org.hyperledger.besu.internal:besu-ethereum-core'
+    compileOnly 'org.hyperledger.besu:besu-evm'
 
     // This will be provided by besu package
     compileOnly 'net.consensys.linea.zktracer:arithmetization'
@@ -236,13 +271,13 @@ dependencies {
     testImplementation 'org.slf4j:slf4j-api'
     testImplementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
     testImplementation 'org.apache.logging.log4j:log4j-core'
-    testImplementation 'org.hyperledger.besu.internal:rlp'
-    testImplementation 'org.hyperledger.besu:plugin-api'
+    testImplementation 'org.hyperledger.besu.internal:besu-ethereum-rlp'
+    testImplementation 'org.hyperledger.besu:besu-plugin-api'
     testImplementation 'org.hyperledger.besu:besu-datatypes'
-    testImplementation "org.hyperledger.besu.internal:testutil"
-    testImplementation "org.hyperledger.besu.internal:algorithms"
-    testImplementation 'org.hyperledger.besu.internal:core'
-    testImplementation 'org.hyperledger.besu:evm'
+    testImplementation "org.hyperledger.besu.internal:besu-testutil"
+    testImplementation "org.hyperledger.besu.internal:besu-crypto-algorithms"
+    testImplementation 'org.hyperledger.besu.internal:besu-ethereum-core'
+    testImplementation 'org.hyperledger.besu:besu-evm'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
@@ -253,7 +288,7 @@ dependencies {
     testImplementation 'com.google.guava:guava'
 
     // pull in testSupport
-    testImplementation "org.hyperledger.besu.internal:core:${besuVersion}:test-support@jar"
+    testImplementation "org.hyperledger.besu.internal:besu-ethereum-core:${besuVersion}:test-support@jar"
 }
 
 apply plugin: 'java'
