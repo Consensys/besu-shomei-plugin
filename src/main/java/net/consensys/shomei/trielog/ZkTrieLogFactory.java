@@ -139,7 +139,11 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
       Set<Address> hubNotSeenAccounts) {
     return accountsToUpdate.entrySet().stream()
-        .filter(accumulatorEntry -> !hubNotSeenAccounts.contains(accumulatorEntry.getKey()))
+        .filter(
+            accumulatorEntry ->
+                // only filter accounts which are unchanged and in hub-not-seen:
+                !(accumulatorEntry.getValue().isUnchanged()
+                    && hubNotSeenAccounts.contains(accumulatorEntry.getKey())))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
