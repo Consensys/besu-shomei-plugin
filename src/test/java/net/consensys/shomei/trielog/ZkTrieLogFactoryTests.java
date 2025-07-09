@@ -305,29 +305,41 @@ public class ZkTrieLogFactoryTests {
     Address address1 = Address.fromHexString("0xdead");
     Address address2 = Address.fromHexString("0xbeef");
     Address address3 = Address.fromHexString("0xc0ffee");
+    Address address4 = Address.fromHexString("0xdead0a55");
 
     var tuple1 = new TrieLogValue<ZkAccountValue>(null, null, false);
     var tuple2 = new TrieLogValue<ZkAccountValue>(null, null, false);
     var tuple3 = new TrieLogValue<ZkAccountValue>(null, null, false);
+    var tuple4 =
+        new TrieLogValue<>(
+            null, new ZkAccountValue(0, Wei.ZERO, Hash.EMPTY_TRIE_HASH, Hash.ZERO), false);
 
     Map<Address, TrieLogValue<? extends AccountValue>> accountsToUpdate =
         Map.of(
             address1, tuple1,
             address2, tuple2,
-            address3, tuple3);
+            address3, tuple3,
+            address4, tuple4);
 
-    Set<Address> hubSeenAccounts = Set.of(address1, address3);
+    Set<Address> hubNotSeenAccounts = Set.of(address1, address3, address4);
 
     Map<Address, ? extends LogTuple<? extends AccountValue>> result =
-        ZkTrieLogFactory.filterAccounts(accountsToUpdate, hubSeenAccounts);
+        ZkTrieLogFactory.filterAccounts(accountsToUpdate, hubNotSeenAccounts);
 
-    // Verify results
-    assertEquals(1, result.size());
+    // expect accounts 1 and 4
+    assertEquals(2, result.size());
+
+    // Verify hub-unseen address 1 and 3 are not present:
     assertFalse(result.containsKey(address1));
     assertFalse(result.containsKey(address3));
+
+    // assert address2 was unfiltered
     assertTrue(result.containsKey(address2));
+    // should refuse to filter an account with changes, despite having been "unseen":
+    assertTrue(result.containsKey(address4));
 
     assertEquals(tuple2, result.get(address2));
+    assertEquals(tuple4, result.get(address4));
   }
 
   @Test
