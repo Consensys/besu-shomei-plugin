@@ -67,6 +67,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   private final Supplier<Optional<BigInteger>> chainIdSupplier;
   private final Supplier<Integer> featureMask;
   private final Supplier<Integer> skipTraceUntil;
+  private final Supplier<Boolean> enableZkTracing;
 
   public ZkBlockImportTracerProvider(
       final ShomeiContext ctx, final Supplier<Optional<BigInteger>> chainIdSupplier) {
@@ -74,12 +75,13 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     this.chainIdSupplier = chainIdSupplier;
     this.skipTraceUntil = Suppliers.memoize(() -> ctx.getCliOptions().zkSkipTraceUntil);
     this.featureMask = Suppliers.memoize(() -> ctx.getCliOptions().zkTraceComparisonMask);
+    this.enableZkTracing = Suppliers.memoize(() -> ctx.getCliOptions().enableZkTracer);
   }
 
   @Override
   public BlockAwareOperationTracer getBlockImportTracer(final BlockHeader blockHeader) {
     // if blockheader is prior to the configured skip-until param, return no_tracing
-    if (skipTraceUntil.get() > blockHeader.getNumber()) {
+    if (!enableZkTracing.get() || (skipTraceUntil.get() > blockHeader.getNumber())) {
       return BlockAwareOperationTracer.NO_TRACING;
     }
 
