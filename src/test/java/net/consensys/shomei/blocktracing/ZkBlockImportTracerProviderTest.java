@@ -14,6 +14,7 @@
  */
 package net.consensys.shomei.blocktracing;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -91,7 +92,7 @@ public class ZkBlockImportTracerProviderTest {
   @BeforeEach
   void setup() {
     testContext = TestShomeiContext.create().setCliOptions(testOpts);
-    testOpts.zkTraceComparisonMask = 15;
+    testOpts.zkTraceComparisonMask = 31;
     lenient()
         .when(mockBlockchainService.getHardforkId(any()))
         .thenReturn(HardforkId.MainnetHardforkId.LONDON);
@@ -110,8 +111,11 @@ public class ZkBlockImportTracerProviderTest {
 
     Set<Address> hubAccountsSeen = Set.of(a, b);
     doAnswer(__ -> accountsToUpdate).when(mockAccumulator).getAccountsToUpdate();
-    comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
+    var noAccountDiff =
+        comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
     verify(comparator, never()).alert(any());
+    assertThat(noAccountDiff.inHub()).isEmpty();
+    assertThat(noAccountDiff.notInHub()).isEmpty();
   }
 
   @Test
@@ -129,8 +133,11 @@ public class ZkBlockImportTracerProviderTest {
     Set<Address> hubAccountsSeen = Set.of(a, b, c);
 
     doAnswer(__ -> accountsToUpdate).when(mockAccumulator).getAccountsToUpdate();
-    comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
+    var foundInHubDiff =
+        comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
     verify(comparator, times(1)).alert(any());
+    assertThat(foundInHubDiff.notInHub()).isEmpty();
+    assertThat(foundInHubDiff.inHub()).hasSize(1);
   }
 
   @Test
@@ -149,8 +156,11 @@ public class ZkBlockImportTracerProviderTest {
     Set<Address> hubAccountsSeen = Set.of(a, b);
 
     doAnswer(__ -> accountsToUpdate).when(mockAccumulator).getAccountsToUpdate();
-    comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
+    var notFoundInHubDiff =
+        comparator.compareAndWarnAccount(mockHeader, mockAccumulator, hubAccountsSeen);
     verify(comparator, times(1)).alert(any());
+    assertThat(notFoundInHubDiff.inHub()).isEmpty();
+    assertThat(notFoundInHubDiff.notInHub()).hasSize(1);
   }
 
   @Test
@@ -166,10 +176,12 @@ public class ZkBlockImportTracerProviderTest {
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
 
     doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
-    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+    var storageDiff = comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, never()).alert(any());
+    assertThat(storageDiff.notInHub()).isEmpty();
+    assertThat(storageDiff.inHub()).isEmpty();
   }
 
   @Test
@@ -184,10 +196,13 @@ public class ZkBlockImportTracerProviderTest {
     Map<Address, Set<Bytes32>> hubSeenStorage = Collections.emptyMap();
 
     doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
-    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+    var hubStorageNotSeenDiff =
+        comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
+    assertThat(hubStorageNotSeenDiff.notInHub()).hasSize(1);
+    assertThat(hubStorageNotSeenDiff.inHub()).isEmpty();
   }
 
   @Test
@@ -201,10 +216,13 @@ public class ZkBlockImportTracerProviderTest {
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
 
     doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
-    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+    var hubStorageSeenDiff =
+        comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
+    assertThat(hubStorageSeenDiff.inHub()).hasSize(1);
+    assertThat(hubStorageSeenDiff.notInHub()).isEmpty();
   }
 
   @Test
@@ -222,10 +240,13 @@ public class ZkBlockImportTracerProviderTest {
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes));
 
     doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
-    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+    var hubNotSeenDiff =
+        comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
+    assertThat(hubNotSeenDiff.notInHub()).hasSize(1);
+    assertThat(hubNotSeenDiff.inHub()).isEmpty();
   }
 
   @Test
@@ -243,10 +264,13 @@ public class ZkBlockImportTracerProviderTest {
     Map<Address, Set<Bytes32>> hubSeenStorage = Map.of(addr, Set.of(slotBytes, slot2Bytes));
 
     doAnswer(__ -> storageToUpdate).when(mockAccumulator).getStorageToUpdate();
-    comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
+    var hubStorageSeenDiff =
+        comparator.compareAndWarnStorage(mockHeader, mockAccumulator, hubSeenStorage);
 
     // ✅ Verify alert() was never called
     verify(comparator, times(1)).alert(any());
+    assertThat(hubStorageSeenDiff.inHub()).hasSize(1);
+    assertThat(hubStorageSeenDiff.notInHub()).isEmpty();
   }
 
   @Test

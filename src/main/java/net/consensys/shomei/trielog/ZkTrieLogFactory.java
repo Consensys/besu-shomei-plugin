@@ -196,7 +196,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
             entry -> {
               Address address = entry.getKey();
               Set<Bytes32> notSeenSlots = hubNotSeenStorage.get(address);
-              if (notSeenSlots == null) {
+              if (notSeenSlots == null || notSeenSlots.isEmpty()) {
                 return entry;
               }
 
