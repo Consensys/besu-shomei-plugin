@@ -168,7 +168,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
       hubSeenStorage.forEach(
           (address, hubSlots) -> {
             var accumulatorSlots = storageToUpdate.get(address);
-            if (accumulatorSlots == null) {
+            if (!hubSlots.isEmpty() && accumulatorSlots == null) {
               alert(
                   () ->
                       LOG.warn(
@@ -200,7 +200,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                                   address.toHexString(),
                                   slot.toHexString())));
               // add missing hubSeenSlots for this address to diff map
-              if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
+              if (!missingSlots.isEmpty() && anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
                 hubStorageFoundDiff.put(address, missingSlots);
               }
             }
@@ -212,7 +212,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
       storageToUpdate.forEach(
           (address, accumulatorSlots) -> {
             var hubSlots = hubSeenStorage.get(address);
-            if (hubSlots == null) {
+            if (!accumulatorSlots.isEmpty() && hubSlots == null) {
               // account and all slots are missing:
               alert(
                   () -> {
@@ -244,7 +244,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                       .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
               // add missing hubSeenSlots for this address to accumulator
-              if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
+              if (!missingSlots.isEmpty() && anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
                 hubStorageMissingDiff.put(
                     address,
                     missingSlots.keySet().stream()
