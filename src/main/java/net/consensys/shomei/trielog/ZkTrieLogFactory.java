@@ -146,7 +146,12 @@ public class ZkTrieLogFactory implements TrieLogFactory {
                 // changed:
                 var accountPrior = accumulatorEntry.getValue().getPrior();
                 var accountUpdated = accumulatorEntry.getValue().getUpdated();
-                return accountHasChanged(accountPrior, accountUpdated);
+                if (!accountHasChanged(accountPrior, accountUpdated)) {
+                  return false;
+                }
+                LOG.error(
+                    "refusing to filter account value write, address: {}",
+                    accumulatorEntry.getKey().toHexString());
               }
               return true;
             })
