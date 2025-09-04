@@ -254,9 +254,9 @@ public class ZkTrieLogFactoryTests {
 
     var mockAccumulator = mock(PathBasedWorldStateUpdateAccumulator.class, RETURNS_DEEP_STUBS);
     var mockAccountMap = new HashMap<Address, PathBasedValue<AccountValue>>();
-    var dummyAcctVal = new ZkAccountValue(0, null, null, null);
-    mockAccountMap.put(mockAddress, new PathBasedValue<>(dummyAcctVal, dummyAcctVal));
-    mockAccountMap.put(mockAddress2, new PathBasedValue<>(dummyAcctVal, dummyAcctVal));
+    ZkAccountValue mockAccountValue = new ZkAccountValue(0, Wei.ZERO, Hash.EMPTY, Hash.EMPTY);
+    mockAccountMap.put(mockAddress, new PathBasedValue<>(mockAccountValue, mockAccountValue));
+    mockAccountMap.put(mockAddress2, new PathBasedValue<>(mockAccountValue, mockAccountValue));
     var mockStorageMap = new HashMap<Address, Map<StorageSlotKey, PathBasedValue<UInt256>>>();
     mockStorageMap.put(
         mockAddress,
@@ -311,9 +311,10 @@ public class ZkTrieLogFactoryTests {
     Address address2 = Address.fromHexString("0xbeef");
     Address address3 = Address.fromHexString("0xc0ffee");
 
-    var tuple1 = new TrieLogValue<ZkAccountValue>(null, null, false);
-    var tuple2 = new TrieLogValue<ZkAccountValue>(null, null, false);
-    var tuple3 = new TrieLogValue<ZkAccountValue>(null, null, false);
+    ZkAccountValue mockAccountVal = new ZkAccountValue(0, Wei.ZERO, Hash.EMPTY, Hash.EMPTY);
+    var tuple1 = new TrieLogValue<ZkAccountValue>(mockAccountVal, mockAccountVal, false);
+    var tuple2 = new TrieLogValue<ZkAccountValue>(mockAccountVal, mockAccountVal, false);
+    var tuple3 = new TrieLogValue<ZkAccountValue>(mockAccountVal, mockAccountVal, false);
 
     Map<Address, TrieLogValue<? extends AccountValue>> accountsToUpdate =
         Map.of(
