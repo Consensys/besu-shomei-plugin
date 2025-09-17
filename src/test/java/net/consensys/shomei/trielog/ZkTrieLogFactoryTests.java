@@ -45,6 +45,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.BonsaiAccount;
+import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.cache.CodeCache;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedValue;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.accumulator.PathBasedWorldStateUpdateAccumulator;
 import org.hyperledger.besu.plugin.data.BlockHeader;
@@ -160,6 +161,8 @@ public class ZkTrieLogFactoryTests {
     // configure our test context
     testCtx.setCliOptions(testOpts).setBlockImportTraceProvider(mockTraceProvider);
 
+    final CodeCache codeCache = new CodeCache();
+
     // mock an accumulator
     AccountValue account =
         new BonsaiAccount(
@@ -170,7 +173,8 @@ public class ZkTrieLogFactoryTests {
             Wei.ONE,
             Hash.EMPTY_TRIE_HASH,
             Hash.EMPTY,
-            false);
+            false,
+            codeCache);
     AccountValue account2 =
         new BonsaiAccount(
             null,
@@ -180,7 +184,8 @@ public class ZkTrieLogFactoryTests {
             Wei.ZERO,
             Hash.EMPTY_TRIE_HASH,
             Hash.ZERO,
-            false);
+            false,
+            codeCache);
 
     var mockAccountMap = new HashMap<Address, PathBasedValue<AccountValue>>();
     mockAccountMap.put(mockAddress2, new PathBasedValue<>(account2, account2, false));
