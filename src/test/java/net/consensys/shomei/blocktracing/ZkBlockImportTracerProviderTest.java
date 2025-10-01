@@ -19,11 +19,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.shomei.cli.ShomeiCliOptions;
@@ -47,6 +49,7 @@ import org.bouncycastle.math.ec.custom.sec.SecP256K1FieldElement;
 import org.hyperledger.besu.crypto.SECPSignature;
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.datatypes.TransactionType;
@@ -63,6 +66,7 @@ import org.hyperledger.besu.ethereum.mainnet.BlockProcessor;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BlockImportTracerProvider;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.hyperledger.besu.plugin.services.storage.DataStorageFormat;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
@@ -82,13 +86,16 @@ public class ZkBlockImportTracerProviderTest {
   private ZkBlockImportTracerProvider comparator;
   private BlockHeader mockHeader = mock(BlockHeader.class);
   @Mock TrieLogAccumulator mockAccumulator;
+  @Mock BlockchainService mockBlockchainService;
 
   @BeforeEach
   void setup() {
     testContext = TestShomeiContext.create().setCliOptions(testOpts);
     testOpts.zkTraceComparisonMask = 15;
-    comparator =
-        spy(new ZkBlockImportTracerProvider(testContext, () -> Optional.of(BigInteger.ONE)));
+    lenient()
+        .when(mockBlockchainService.getHardforkId(any()))
+        .thenReturn(HardforkId.MainnetHardforkId.LONDON);
+    comparator = spy(new ZkBlockImportTracerProvider(testContext, mockBlockchainService));
   }
 
   @Test
@@ -264,10 +271,9 @@ public class ZkBlockImportTracerProviderTest {
         .when(zkTrieLogFactoryImpl)
         .create(any(TrieLogAccumulator.class), any(BlockHeader.class));
 
+    when(mockBlockchainService.getChainId()).thenReturn(Optional.of(BigInteger.valueOf(59144L)));
     var zkTracerProviderSpy =
-        spy(
-            new ZkBlockImportTracerProvider(
-                testContext, () -> Optional.of(BigInteger.valueOf(59144L))));
+        spy(new ZkBlockImportTracerProvider(testContext, mockBlockchainService));
     testContext.setBlockImportTraceProvider(zkTracerProviderSpy);
 
     // Set up test world state and blockchain

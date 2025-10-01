@@ -46,10 +46,12 @@ import org.apache.tuweni.bytes.DelegatingBytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BlockImportTracerProvider;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog.LogTuple;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogAccumulator;
@@ -64,15 +66,17 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ZkBlockImportTracerProvider.class);
 
   private final AtomicReference<HeaderTracerTuple> currentTracer = new AtomicReference<>();
+  private final BlockchainService blockchainService;
   private final Supplier<Optional<BigInteger>> chainIdSupplier;
   private final Supplier<Integer> featureMask;
   private final Supplier<Integer> skipTraceUntil;
   private final Supplier<Boolean> enableZkTracing;
 
   public ZkBlockImportTracerProvider(
-      final ShomeiContext ctx, final Supplier<Optional<BigInteger>> chainIdSupplier) {
+      final ShomeiContext ctx, final BlockchainService blockchainService) {
+    this.blockchainService = blockchainService;
     // defer to suppliers for late bound configs and services
-    this.chainIdSupplier = chainIdSupplier;
+    this.chainIdSupplier = Suppliers.memoize(blockchainService::getChainId);
     this.skipTraceUntil = Suppliers.memoize(() -> ctx.getCliOptions().zkSkipTraceUntil);
     this.featureMask = Suppliers.memoize(() -> ctx.getCliOptions().zkTraceComparisonMask);
     this.enableZkTracing = Suppliers.memoize(() -> ctx.getCliOptions().enableZkTracer);
@@ -85,11 +89,18 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
       return BlockAwareOperationTracer.NO_TRACING;
     }
 
-    // TODO: hardcoding LONDON works for now, but will need to be revisited when linea forks.
-    //      https://github.com/hyperledger/besu/issues/8535
+    final var forkId = blockchainService.getHardforkId(blockHeader);
+
     ZkTracer zkTracer =
         new ZkTracer(
-            Fork.LONDON,
+            switch (forkId) {
+              case HardforkId.MainnetHardforkId.LONDON -> Fork.LONDON;
+              case HardforkId.MainnetHardforkId.PARIS -> Fork.PARIS;
+              case HardforkId.MainnetHardforkId.SHANGHAI -> Fork.SHANGHAI;
+              case HardforkId.MainnetHardforkId.CANCUN -> Fork.CANCUN;
+              case HardforkId.MainnetHardforkId.PRAGUE -> Fork.PRAGUE;
+              default -> throw new RuntimeException("Unknown fork id " + forkId);
+            },
             LineaL1L2BridgeSharedConfiguration.EMPTY,
             chainIdSupplier.get().orElseThrow(() -> new RuntimeException("Chain Id unavailable")));
 
