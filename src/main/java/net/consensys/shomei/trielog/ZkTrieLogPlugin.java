@@ -18,12 +18,9 @@ import net.consensys.shomei.blocktracing.ZkBlockImportTracerProvider;
 import net.consensys.shomei.context.ShomeiContext;
 import net.consensys.shomei.context.ShomeiContext.ShomeiContextImpl;
 
-import java.math.BigInteger;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import com.google.auto.service.AutoService;
-import com.google.common.base.Suppliers;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BlockImportTracerProvider;
@@ -60,18 +57,15 @@ public class ZkTrieLogPlugin implements BesuPlugin {
 
     serviceManager.addService(TrieLogService.class, trieLogService);
 
-    var blockchainService = serviceManager.getService(BlockchainService.class);
-
-    // chain id is late bound:
-    Supplier<Optional<BigInteger>> chainIdSupplier =
-        blockchainService
-            .map(svc -> Suppliers.memoize(svc::getChainId))
+    var blockchainService =
+        serviceManager
+            .getService(BlockchainService.class)
             .orElseThrow(() -> new RuntimeException("No BlockchainService available"));
 
     // associated worldstate updater... get from Hub???? wtf.
 
     ZkBlockImportTracerProvider tracerProvider =
-        new ZkBlockImportTracerProvider(ctx, chainIdSupplier);
+        new ZkBlockImportTracerProvider(ctx, blockchainService);
 
     if (ctx.getCliOptions().enableZkTracer) {
       ctx.setBlockImportTraceProvider(tracerProvider);
