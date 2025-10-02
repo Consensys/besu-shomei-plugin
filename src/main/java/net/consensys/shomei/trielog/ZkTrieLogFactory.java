@@ -139,7 +139,22 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       Map<Address, ? extends LogTuple<? extends AccountValue>> accountsToUpdate,
       Set<Address> hubNotSeenAccounts) {
     return accountsToUpdate.entrySet().stream()
-        .filter(accumulatorEntry -> !hubNotSeenAccounts.contains(accumulatorEntry.getKey()))
+        .filter(
+            accumulatorEntry -> {
+              if (hubNotSeenAccounts.contains(accumulatorEntry.getKey())) {
+                // if hub hasn't seen this account, before filtering, assert that the account has
+                // changed:
+                var accountPrior = accumulatorEntry.getValue().getPrior();
+                var accountUpdated = accumulatorEntry.getValue().getUpdated();
+                if (!accountHasChanged(accountPrior, accountUpdated)) {
+                  return false;
+                }
+                LOG.error(
+                    "refusing to filter account value write, address: {}",
+                    accumulatorEntry.getKey().toHexString());
+              }
+              return true;
+            })
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
@@ -196,7 +211,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
             entry -> {
               Address address = entry.getKey();
               Set<Bytes32> notSeenSlots = hubNotSeenStorage.get(address);
-              if (notSeenSlots == null) {
+              if (notSeenSlots == null || notSeenSlots.isEmpty()) {
                 return entry;
               }
 
@@ -437,5 +452,16 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     } else {
       output.writeInt(1);
     }
+  }
+
+  // helper function to safely assert account diff:
+  private static boolean accountHasChanged(AccountValue prior, AccountValue updated) {
+    if (prior == null || updated == null) {
+      return !(prior == null && updated == null);
+    }
+    return prior.getNonce() != updated.getNonce()
+        || !prior.getBalance().equals(updated.getBalance())
+        || !prior.getStorageRoot().equals(updated.getStorageRoot())
+        || !prior.getCodeHash().equals(updated.getCodeHash());
   }
 }
