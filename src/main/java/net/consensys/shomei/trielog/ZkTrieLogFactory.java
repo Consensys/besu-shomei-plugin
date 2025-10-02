@@ -456,6 +456,9 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
   // helper function to safely assert account diff:
   private static boolean accountHasChanged(AccountValue prior, AccountValue updated) {
+    if (prior == null || updated == null) {
+      return !(prior == null && updated == null);
+    }
     return prior.getNonce() != updated.getNonce()
         || !prior.getBalance().equals(updated.getBalance())
         || !prior.getStorageRoot().equals(updated.getStorageRoot())

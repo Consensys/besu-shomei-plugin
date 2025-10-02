@@ -59,7 +59,9 @@ public class ZkTrieLogFactoryTests {
 
   final TestShomeiContext testCtx = TestShomeiContext.create();
   final Address accountFixture = Address.fromHexString("0xdeadbeef");
-  final PluginTrieLogLayer trieLogFixture = new PluginTrieLogLayer(Hash.ZERO);
+  final PluginTrieLogLayer trieLogFixture =
+      new PluginTrieLogLayer(
+          Hash.ZERO, Optional.of(1L), new HashMap<>(), new HashMap<>(), new HashMap<>(), true);
 
   @BeforeEach
   public void setup() {
