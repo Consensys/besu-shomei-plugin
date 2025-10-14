@@ -136,11 +136,11 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
             .filter(t -> t.header().getBlockHash().equals(blockHeader.getBlockHash()));
 
     if (current.isEmpty()) {
-      LOG.warn(
-          "Trace not found while attempting to compare block {}.  current trace block {}",
-          headerLogString(blockHeader),
-          current.map(t -> t.header).map(this::headerLogString).orElse("empty"));
-      return HubDiffTuple.EMPTY;
+      throw new IllegalStateException(
+          String.format(
+              "Trace not found while attempting to compare block %s.  current trace block %s",
+              headerLogString(blockHeader),
+              current.map(t -> t.header).map(this::headerLogString).orElse("empty")));
     }
 
     var zkTracerTuple = current.get();
