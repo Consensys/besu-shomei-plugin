@@ -275,11 +275,6 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     output.writeBytes(layer.getBlockHash());
     // optionally write block number
     layer.getBlockNumber().ifPresent(output::writeLongScalar);
-    // optionally write zkTraceComparisonFeature
-    if (layer instanceof PluginTrieLogLayer pluginLayer) {
-      pluginLayer.zkTraceComparisonFeature().ifPresent(output::writeInt);
-    }
-
     for (final Address address : addresses) {
       output.startList(); // this change
       output.writeBytes(address);
@@ -325,6 +320,10 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       output.endList(); // this change
     }
 
+    // optionally write zkTraceComparisonFeature
+    if (layer instanceof PluginTrieLogLayer pluginLayer) {
+      pluginLayer.zkTraceComparisonFeature().ifPresent(output::writeInt);
+    }
     output.endList(); // container
   }
 
@@ -354,9 +353,6 @@ public class ZkTrieLogFactory implements TrieLogFactory {
         Optional.of(!input.nextIsList())
             .filter(isPresent -> isPresent)
             .map(__ -> input.readLongScalar());
-    // zkTraceComparisonFeature is optional
-    Optional<Integer> zkTraceComparisonFeature =
-        Optional.of(!input.nextIsList()).filter(isPresent -> isPresent).map(__ -> input.readInt());
 
     while (!input.isEndOfCurrentList()) {
       input.enterList();
@@ -414,6 +410,10 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       input.leaveListLenient();
     }
     input.leaveListLenient();
+
+    // zkTraceComparisonFeature is optional
+    Optional<Integer> zkTraceComparisonFeature =
+        Optional.of(!input.isDone()).filter(isPresent -> isPresent).map(__ -> input.readInt());
 
     return new PluginTrieLogLayer(
         blockHash, blockNumber, accounts, code, storage, true, zkTraceComparisonFeature);

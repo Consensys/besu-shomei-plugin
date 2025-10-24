@@ -159,7 +159,7 @@ public record PluginTrieLogLayer(
   public List<String> getZkTraceComparisonFeatures() {
     return zkTraceComparisonFeature
         .map(ZkTraceComparisonFeature::fromMask)
-        .map(enumSet -> enumSet.stream().map(Enum::name).sorted().collect(Collectors.toList()))
+        .map(enumSet -> enumSet.stream().map(Enum::name).collect(Collectors.toList()))
         .orElse(null);
   }
 
