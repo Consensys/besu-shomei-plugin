@@ -14,10 +14,14 @@
  */
 package net.consensys.shomei.trielog;
 
+import net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature;
+
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -42,13 +46,13 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 @SuppressWarnings("unchecked")
 @JsonInclude(JsonInclude.Include.NON_ABSENT)
 public record PluginTrieLogLayer(
-    Hash blockHash,
-    Optional<Long> blockNumber,
+    @JsonIgnore Hash blockHash,
+    @JsonIgnore Optional<Long> blockNumber,
     @JsonIgnore Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
     @JsonIgnore Map<Address, TrieLog.LogTuple<Bytes>> code,
     @JsonIgnore Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
     @JsonIgnore boolean frozen,
-    Optional<Integer> zkTraceComparisonFeature)
+    @JsonIgnore Optional<Integer> zkTraceComparisonFeature)
     implements TrieLog {
 
   /** Creates a new PluginTrieLogLayer with blockhash and empty maps to deserialize into. */
@@ -151,9 +155,12 @@ public record PluginTrieLogLayer(
     return blockNumber.orElse(null);
   }
 
-  @JsonGetter("zkTraceComparisonFeature")
-  public Integer getZkTraceComparisonFeatureValue() {
-    return zkTraceComparisonFeature.orElse(null);
+  @JsonGetter("zkTraceComparisonFeatures")
+  public List<String> getZkTraceComparisonFeatures() {
+    return zkTraceComparisonFeature
+        .map(ZkTraceComparisonFeature::fromMask)
+        .map(enumSet -> enumSet.stream().map(Enum::name).sorted().collect(Collectors.toList()))
+        .orElse(null);
   }
 
   @JsonGetter("accountChangesCount")

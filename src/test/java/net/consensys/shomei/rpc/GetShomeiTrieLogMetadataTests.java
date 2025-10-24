@@ -14,11 +14,10 @@
  */
 package net.consensys.shomei.rpc;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.WebClient;
-import io.vertx.junit5.VertxExtension;
-import io.vertx.junit5.VertxTestContext;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
+
 import net.consensys.shomei.context.ShomeiContext;
 import net.consensys.shomei.context.TestShomeiContext;
 import net.consensys.shomei.rpc.methods.ShomeiGetTrieLogMetadata;
@@ -27,6 +26,18 @@ import net.consensys.shomei.trielog.TrieLogValue;
 import net.consensys.shomei.trielog.ZkAccountValue;
 import net.consensys.shomei.trielog.ZkTrieLogFactory;
 import net.consensys.shomei.trielog.ZkTrieLogService;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Consumer;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
@@ -42,16 +53,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Consumer;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(VertxExtension.class)
 @ExtendWith(MockitoExtension.class)
@@ -88,8 +89,7 @@ public class GetShomeiTrieLogMetadataTests {
     Address addr1 = Address.fromHexString("0x1000000000000000000000000000000000000000");
     Address addr2 = Address.fromHexString("0x2000000000000000000000000000000000000000");
 
-    Map<Address, TrieLog.LogTuple<AccountValue>> accounts =
-        new HashMap<>();
+    Map<Address, TrieLog.LogTuple<AccountValue>> accounts = new HashMap<>();
     accounts.put(
         addr1,
         new TrieLogValue<>(
@@ -137,10 +137,10 @@ public class GetShomeiTrieLogMetadataTests {
           var res = response.getJsonObject("result");
           assertThat(res).isNotNull();
           assertThat(res.getString("blockHash"))
-              .isEqualTo(
-                  "0x0000000000000000000000000000000000000000000000000000000000000000");
+              .isEqualTo("0x0000000000000000000000000000000000000000000000000000000000000000");
           assertThat(res.getLong("blockNumber")).isEqualTo(123L);
-          assertThat(res.getInteger("zkTraceComparisonFeature")).isEqualTo(24);
+          assertThat(res.getJsonArray("zkTraceComparisonFeatures"))
+              .containsExactlyInAnyOrder("DECORATE_FROM_HUB", "FILTER_FROM_HUB");
           assertThat(res.getInteger("accountChangesCount")).isEqualTo(1);
           assertThat(res.getInteger("codeChangesCount")).isEqualTo(0);
           assertThat(res.getInteger("storageChangesCount")).isEqualTo(2);
@@ -177,10 +177,9 @@ public class GetShomeiTrieLogMetadataTests {
           var res = response.getJsonObject("result");
           assertThat(res).isNotNull();
           assertThat(res.getString("blockHash"))
-              .isEqualTo(
-                  "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
+              .isEqualTo("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
           assertThat(res.getLong("blockNumber")).isEqualTo(456L);
-          assertThat(res.getInteger("zkTraceComparisonFeature")).isNull();
+          assertThat(res.getJsonArray("zkTraceComparisonFeatures")).isNull();
           assertThat(res.getInteger("accountChangesCount")).isEqualTo(0);
           assertThat(res.getInteger("codeChangesCount")).isEqualTo(0);
           assertThat(res.getInteger("storageChangesCount")).isEqualTo(0);
