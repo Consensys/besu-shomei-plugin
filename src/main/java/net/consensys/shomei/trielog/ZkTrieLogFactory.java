@@ -409,11 +409,14 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       // lenient leave list for forward compatible additions.
       input.leaveListLenient();
     }
-    input.leaveListLenient();
 
-    // zkTraceComparisonFeature is optional
+    // zkTraceComparisonFeature is optional (read as last element in container, before leaving)
     Optional<Integer> zkTraceComparisonFeature =
-        Optional.of(!input.isDone()).filter(isPresent -> isPresent).map(__ -> input.readInt());
+        Optional.of(!input.isEndOfCurrentList())
+            .filter(isPresent -> isPresent)
+            .map(__ -> input.readInt());
+
+    input.leaveListLenient();
 
     return new PluginTrieLogLayer(
         blockHash, blockNumber, accounts, code, storage, true, zkTraceComparisonFeature);
