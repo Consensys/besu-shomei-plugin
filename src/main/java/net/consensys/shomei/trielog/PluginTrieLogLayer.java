@@ -19,6 +19,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.tuweni.bytes.Bytes;
@@ -37,18 +40,27 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
  * trie changes as well.
  */
 @SuppressWarnings("unchecked")
+@JsonInclude(JsonInclude.Include.NON_ABSENT)
 public record PluginTrieLogLayer(
     Hash blockHash,
     Optional<Long> blockNumber,
-    Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
-    Map<Address, TrieLog.LogTuple<Bytes>> code,
-    Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
-    boolean frozen)
+    @JsonIgnore Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
+    @JsonIgnore Map<Address, TrieLog.LogTuple<Bytes>> code,
+    @JsonIgnore Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
+    @JsonIgnore boolean frozen,
+    Optional<Integer> zkTraceComparisonFeature)
     implements TrieLog {
 
   /** Creates a new PluginTrieLogLayer with blockhash and empty maps to deserialize into. */
   public PluginTrieLogLayer(final Hash blockHash) {
-    this(blockHash, Optional.empty(), new HashMap<>(), new HashMap<>(), new HashMap<>(), true);
+    this(
+        blockHash,
+        Optional.empty(),
+        new HashMap<>(),
+        new HashMap<>(),
+        new HashMap<>(),
+        true,
+        Optional.empty());
   }
 
   /** Locks the layer so no new changes can be added; */
@@ -126,6 +138,37 @@ public record PluginTrieLogLayer(
   @Override
   public Optional<AccountValue> getAccount(final Address address) {
     return Optional.ofNullable(accounts.get(address)).map(LogTuple::getUpdated);
+  }
+
+  // JSON serialization methods for metadata
+  @JsonGetter("blockHash")
+  public String getBlockHashHex() {
+    return blockHash.toHexString();
+  }
+
+  @JsonGetter("blockNumber")
+  public Long getBlockNumberValue() {
+    return blockNumber.orElse(null);
+  }
+
+  @JsonGetter("zkTraceComparisonFeature")
+  public Integer getZkTraceComparisonFeatureValue() {
+    return zkTraceComparisonFeature.orElse(null);
+  }
+
+  @JsonGetter("accountChangesCount")
+  public int getAccountChangesCount() {
+    return accounts.size();
+  }
+
+  @JsonGetter("codeChangesCount")
+  public int getCodeChangesCount() {
+    return code.size();
+  }
+
+  @JsonGetter("storageChangesCount")
+  public int getStorageChangesCount() {
+    return storage.values().stream().mapToInt(Map::size).sum();
   }
 
   public String dump() {

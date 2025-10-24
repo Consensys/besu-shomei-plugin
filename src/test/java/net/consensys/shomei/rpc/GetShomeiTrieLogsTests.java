@@ -56,7 +56,8 @@ public class GetShomeiTrieLogsTests {
   ZkTrieLogService trieLogService = spy(new ZkTrieLogService(ctx));
 
   PluginTrieLogLayer mockLayer =
-      new PluginTrieLogLayer(Hash.ZERO, Optional.of(0L), Map.of(), Map.of(), Map.of(), true);
+      new PluginTrieLogLayer(
+          Hash.ZERO, Optional.of(0L), Map.of(), Map.of(), Map.of(), true, Optional.empty());
 
   MockJsonRpcHttpVerticle verticle;
   WebClient client;
