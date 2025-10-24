@@ -163,6 +163,11 @@ public record PluginTrieLogLayer(
         .orElse(null);
   }
 
+  @JsonGetter("zkTraceComparisonFeatureMask")
+  public Integer getZkTraceComparisonFeatureMask() {
+    return zkTraceComparisonFeature.orElse(null);
+  }
+
   @JsonGetter("accountChangesCount")
   public int getAccountChangesCount() {
     return accounts.size();

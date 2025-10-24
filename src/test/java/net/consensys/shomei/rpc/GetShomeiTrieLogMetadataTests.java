@@ -141,6 +141,7 @@ public class GetShomeiTrieLogMetadataTests {
           assertThat(res.getLong("blockNumber")).isEqualTo(123L);
           assertThat(res.getJsonArray("zkTraceComparisonFeatures"))
               .containsExactlyInAnyOrder("DECORATE_FROM_HUB", "FILTER_FROM_HUB");
+          assertThat(res.getInteger("zkTraceComparisonFeatureMask")).isEqualTo(24);
           assertThat(res.getInteger("accountChangesCount")).isEqualTo(1);
           assertThat(res.getInteger("codeChangesCount")).isEqualTo(0);
           assertThat(res.getInteger("storageChangesCount")).isEqualTo(2);
@@ -180,6 +181,7 @@ public class GetShomeiTrieLogMetadataTests {
               .isEqualTo("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef");
           assertThat(res.getLong("blockNumber")).isEqualTo(456L);
           assertThat(res.getJsonArray("zkTraceComparisonFeatures")).isNull();
+          assertThat(res.getInteger("zkTraceComparisonFeatureMask")).isNull();
           assertThat(res.getInteger("accountChangesCount")).isEqualTo(0);
           assertThat(res.getInteger("codeChangesCount")).isEqualTo(0);
           assertThat(res.getInteger("storageChangesCount")).isEqualTo(0);
