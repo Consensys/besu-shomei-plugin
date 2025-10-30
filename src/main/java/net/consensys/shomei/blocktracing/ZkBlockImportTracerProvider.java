@@ -85,7 +85,6 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   @Override
   public BlockAwareOperationTracer getBlockImportTracer(final BlockHeader blockHeader) {
     // if blockheader is prior to the configured skip-until param, return no_tracing
-    System.out.println("getBlockImportTracer " + enableZkTracing.get());
     if (!enableZkTracing.get() || (skipTraceUntil.get() > blockHeader.getNumber())) {
       return BlockAwareOperationTracer.NO_TRACING;
     }
