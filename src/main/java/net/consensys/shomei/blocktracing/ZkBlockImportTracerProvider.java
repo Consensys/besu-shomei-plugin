@@ -104,8 +104,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
             LineaL1L2BridgeSharedConfiguration.EMPTY,
             chainIdSupplier.get().orElseThrow(() -> new RuntimeException("Chain Id unavailable")));
 
-    LOG.debug("returning zkTracer for {}", headerLogString(blockHeader));
-    currentTracer.set(new HeaderTracerTuple(blockHeader, zkTracer));
+    if (!currentTracer.compareAndSet(null, new HeaderTracerTuple(blockHeader, zkTracer))) {
+      throw new RuntimeException("Tracing is already in progress");
+    }
+
+    LOG.info("returning zkTracer for {}", headerLogString(blockHeader));
+
     return zkTracer;
   }
 
@@ -433,6 +437,10 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
       }
     }
     return logBuilder.append("}").toString();
+  }
+
+  public void clear() {
+    currentTracer.set(null);
   }
 
   public record HeaderTracerTuple(BlockHeader header, ZkTracer zkTracer) {}
