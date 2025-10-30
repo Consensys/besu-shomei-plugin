@@ -17,6 +17,7 @@ package net.consensys.shomei.rpc;
 import net.consensys.shomei.context.ShomeiContext;
 import net.consensys.shomei.context.ShomeiContext.ShomeiContextImpl;
 import net.consensys.shomei.rpc.methods.ShomeiGetTrieLog;
+import net.consensys.shomei.rpc.methods.ShomeiGetTrieLogMetadata;
 import net.consensys.shomei.rpc.methods.ShomeiGetTrieLogsByRange;
 
 import java.util.List;
@@ -36,7 +37,11 @@ public class BesuShomeiRpcPlugin implements BesuPlugin {
   @Override
   public void register(final ServiceManager serviceManager) {
     LOG.debug("Registering RPC plugins");
-    var methods = List.of(new ShomeiGetTrieLogsByRange(ctx), new ShomeiGetTrieLog(ctx));
+    var methods =
+        List.of(
+            new ShomeiGetTrieLogsByRange(ctx),
+            new ShomeiGetTrieLog(ctx),
+            new ShomeiGetTrieLogMetadata(ctx));
     serviceManager
         .getService(RpcEndpointService.class)
         .ifPresent(

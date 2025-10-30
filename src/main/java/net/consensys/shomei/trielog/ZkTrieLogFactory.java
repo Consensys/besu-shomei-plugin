@@ -71,41 +71,49 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   @SuppressWarnings("unchecked")
   public TrieLog create(final TrieLogAccumulator accumulator, final BlockHeader blockHeader) {
 
-    var accountsToUpdate = accumulator.getAccountsToUpdate();
-    var codeToUpdate = accumulator.getCodeToUpdate();
-    var storageToUpdate = accumulator.getStorageToUpdate();
+    try {
+      var accountsToUpdate = accumulator.getAccountsToUpdate();
+      var codeToUpdate = accumulator.getCodeToUpdate();
+      var storageToUpdate = accumulator.getStorageToUpdate();
 
-    if (comparisonFeatureMask.get() > 0) {
+      if (comparisonFeatureMask.get() > 0) {
+        LOG.debug(
+            "comparing ZkTrieLog with ZkTracer for block {}:{}",
+            blockHeader.getNumber(),
+            blockHeader.getBlockHash());
+        var hubSeenDiff =
+            ctx.getBlockImportTraceProvider().compareWithTrace(blockHeader, accumulator);
+        if (isEnabled(comparisonFeatureMask.get(), DECORATE_FROM_HUB)) {
+          accountsToUpdate =
+              decorateAccounts(
+                  accountsToUpdate, hubSeenDiff.foundInHub().adressesDiff(), accumulator);
+          storageToUpdate =
+              decorateStorage(storageToUpdate, hubSeenDiff.foundInHub().storageDiff(), accumulator);
+        }
+        if (isEnabled(comparisonFeatureMask.get(), FILTER_FROM_HUB)) {
+          accountsToUpdate =
+              filterAccounts(accountsToUpdate, hubSeenDiff.notFoundInHub().adressesDiff());
+          storageToUpdate =
+              filterStorage(storageToUpdate, hubSeenDiff.notFoundInHub().storageDiff());
+        }
+      }
+
       LOG.debug(
-          "comparing ZkTrieLog with ZkTracer for block {}:{}",
+          "creating ZkTrieLog for block {}:{}",
           blockHeader.getNumber(),
           blockHeader.getBlockHash());
-      var hubSeenDiff =
-          ctx.getBlockImportTraceProvider().compareWithTrace(blockHeader, accumulator);
-      if (isEnabled(comparisonFeatureMask.get(), DECORATE_FROM_HUB)) {
-        accountsToUpdate =
-            decorateAccounts(
-                accountsToUpdate, hubSeenDiff.foundInHub().adressesDiff(), accumulator);
-        storageToUpdate =
-            decorateStorage(storageToUpdate, hubSeenDiff.foundInHub().storageDiff(), accumulator);
-      }
-      if (isEnabled(comparisonFeatureMask.get(), FILTER_FROM_HUB)) {
-        accountsToUpdate =
-            filterAccounts(accountsToUpdate, hubSeenDiff.notFoundInHub().adressesDiff());
-        storageToUpdate = filterStorage(storageToUpdate, hubSeenDiff.notFoundInHub().storageDiff());
-      }
+
+      return new PluginTrieLogLayer(
+          blockHeader.getBlockHash(),
+          Optional.of(blockHeader.getNumber()),
+          (Map<Address, LogTuple<AccountValue>>) accountsToUpdate,
+          (Map<Address, LogTuple<Bytes>>) codeToUpdate,
+          (Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate,
+          true,
+          Optional.of(comparisonFeatureMask.get()));
+    } finally {
+      ctx.getBlockImportTraceProvider().clear();
     }
-
-    LOG.debug(
-        "creating ZkTrieLog for block {}:{}", blockHeader.getNumber(), blockHeader.getBlockHash());
-
-    return new PluginTrieLogLayer(
-        blockHeader.getBlockHash(),
-        Optional.of(blockHeader.getNumber()),
-        (Map<Address, LogTuple<AccountValue>>) accountsToUpdate,
-        (Map<Address, LogTuple<Bytes>>) codeToUpdate,
-        (Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate,
-        true);
   }
 
   /* safe map decorator, in case the map we are provided is immutable */
@@ -274,7 +282,6 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     output.writeBytes(layer.getBlockHash());
     // optionally write block number
     layer.getBlockNumber().ifPresent(output::writeLongScalar);
-
     for (final Address address : addresses) {
       output.startList(); // this change
       output.writeBytes(address);
@@ -320,6 +327,10 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       output.endList(); // this change
     }
 
+    // optionally write zkTraceComparisonFeature
+    if (layer instanceof PluginTrieLogLayer pluginLayer) {
+      pluginLayer.zkTraceComparisonFeature().ifPresent(output::writeInt);
+    }
     output.endList(); // container
   }
 
@@ -405,9 +416,17 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       // lenient leave list for forward compatible additions.
       input.leaveListLenient();
     }
+
+    // zkTraceComparisonFeature is optional (read as last element in container, before leaving)
+    Optional<Integer> zkTraceComparisonFeature =
+        Optional.of(!input.isEndOfCurrentList())
+            .filter(isPresent -> isPresent)
+            .map(__ -> input.readInt());
+
     input.leaveListLenient();
 
-    return new PluginTrieLogLayer(blockHash, blockNumber, accounts, code, storage, true);
+    return new PluginTrieLogLayer(
+        blockHash, blockNumber, accounts, code, storage, true, zkTraceComparisonFeature);
   }
 
   protected static <T> T nullOrValue(final RLPInput input, final Function<RLPInput, T> reader) {
