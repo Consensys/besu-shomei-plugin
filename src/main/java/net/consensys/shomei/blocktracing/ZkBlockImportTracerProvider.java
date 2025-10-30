@@ -151,7 +151,10 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
           String.format(
               "Block %s not found in the Tracer. Current trace block %s",
               headerLogString(blockHeader),
-              current.map(t -> t.header).map(this::headerLogString).orElse("empty")));
+              getCurrentTracerTuple()
+                  .map(t -> t.header)
+                  .map(this::headerLogString)
+                  .orElse("empty")));
     }
 
     var zkTracerTuple = current.get();
