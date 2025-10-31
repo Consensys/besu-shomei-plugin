@@ -65,8 +65,7 @@ public class ZkTrieLogObserverTests {
                   null, new ZkAccountValue(1, Wei.fromEth(1), Hash.ZERO, Hash.ZERO), false)),
           new HashMap<>(),
           new HashMap<>(),
-          true,
-          Optional.empty());
+          true);
 
   // should be provided by test method:
   private Consumer<HttpServerRequest> requestVerifier = null;
