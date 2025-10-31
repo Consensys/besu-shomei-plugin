@@ -61,7 +61,13 @@ public class ZkTrieLogFactoryTests {
   final Address accountFixture = Address.fromHexString("0xdeadbeef");
   final PluginTrieLogLayer trieLogFixture =
       new PluginTrieLogLayer(
-          Hash.ZERO, Optional.of(1L), new HashMap<>(), new HashMap<>(), new HashMap<>(), true);
+          Hash.ZERO,
+          Optional.of(1L),
+          new HashMap<>(),
+          new HashMap<>(),
+          new HashMap<>(),
+          true,
+          Optional.empty());
 
   @BeforeEach
   public void setup() {
@@ -226,6 +232,12 @@ public class ZkTrieLogFactoryTests {
     assertThat(hubAddressStorageChanges.containsKey(zeroKey)).isTrue();
     var oneKey = new StorageSlotKey(UInt256.ONE);
     assertThat(hubAddressStorageChanges.containsKey(oneKey)).isTrue();
+
+    // assert zkTraceComparisonMask used in the factory is reflected in the trielog:
+    assertThat(trielog).isInstanceOf(PluginTrieLogLayer.class);
+    PluginTrieLogLayer pluginTrieLogLayer = (PluginTrieLogLayer) trielog;
+    assertThat(pluginTrieLogLayer.zkTraceComparisonFeature()).isPresent();
+    assertThat(pluginTrieLogLayer.zkTraceComparisonFeature().orElse(0)).isEqualTo(15);
   }
 
   @Test
@@ -305,6 +317,12 @@ public class ZkTrieLogFactoryTests {
     assertNotNull(address3StorageChanges);
     assertThat(address3StorageChanges.size()).isEqualTo(1);
     assertTrue(address3StorageChanges.containsKey(new StorageSlotKey(UInt256.ZERO)));
+
+    // assert zkTraceComparisonMask used in the factory is reflected in the trielog:
+    assertThat(trielog).isInstanceOf(PluginTrieLogLayer.class);
+    PluginTrieLogLayer pluginTrieLogLayer = (PluginTrieLogLayer) trielog;
+    assertThat(pluginTrieLogLayer.zkTraceComparisonFeature()).isPresent();
+    assertThat(pluginTrieLogLayer.zkTraceComparisonFeature().orElse(0)).isEqualTo(16);
   }
 
   @Test

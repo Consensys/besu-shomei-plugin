@@ -1,10 +1,5 @@
 # Changelog
 
-## unreleased
-
-## version 0.7.7
-* revert trielog metadata changes for trielogs until a new shomei release is tested [#60](https://github.com/Consensys/besu-shomei-plugin/pull/60) 
-
 ## version 0.7.6
 * update tracer to rc18, besu to 25.11.0-RC1-linea2 [#59](https://github.com/Consensys/besu-shomei-plugin/pull/59)
 * safe tracer for the besu-shomei-plugin  by matkt [#58](https://github.com/Consensys/besu-shomei-plugin/pull/58)
