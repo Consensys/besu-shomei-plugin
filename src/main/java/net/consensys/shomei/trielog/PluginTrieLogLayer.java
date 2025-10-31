@@ -14,18 +14,11 @@
  */
 package net.consensys.shomei.trielog;
 
-import net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature;
-
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.tuweni.bytes.Bytes;
@@ -44,27 +37,18 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
  * trie changes as well.
  */
 @SuppressWarnings("unchecked")
-@JsonInclude(JsonInclude.Include.NON_ABSENT)
 public record PluginTrieLogLayer(
-    @JsonIgnore Hash blockHash,
-    @JsonIgnore Optional<Long> blockNumber,
-    @JsonIgnore Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
-    @JsonIgnore Map<Address, TrieLog.LogTuple<Bytes>> code,
-    @JsonIgnore Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
-    @JsonIgnore boolean frozen,
-    @JsonIgnore Optional<Integer> zkTraceComparisonFeature)
+    Hash blockHash,
+    Optional<Long> blockNumber,
+    Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
+    Map<Address, TrieLog.LogTuple<Bytes>> code,
+    Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
+    boolean frozen)
     implements TrieLog {
 
   /** Creates a new PluginTrieLogLayer with blockhash and empty maps to deserialize into. */
   public PluginTrieLogLayer(final Hash blockHash) {
-    this(
-        blockHash,
-        Optional.empty(),
-        new HashMap<>(),
-        new HashMap<>(),
-        new HashMap<>(),
-        true,
-        Optional.empty());
+    this(blockHash, Optional.empty(), new HashMap<>(), new HashMap<>(), new HashMap<>(), true);
   }
 
   /** Locks the layer so no new changes can be added; */
@@ -142,45 +126,6 @@ public record PluginTrieLogLayer(
   @Override
   public Optional<AccountValue> getAccount(final Address address) {
     return Optional.ofNullable(accounts.get(address)).map(LogTuple::getUpdated);
-  }
-
-  // JSON serialization methods for metadata
-  @JsonGetter("blockHash")
-  public String getBlockHashHex() {
-    return blockHash.toHexString();
-  }
-
-  @JsonGetter("blockNumber")
-  public Long getBlockNumberValue() {
-    return blockNumber.orElse(null);
-  }
-
-  @JsonGetter("zkTraceComparisonFeatures")
-  public List<String> getZkTraceComparisonFeatures() {
-    return zkTraceComparisonFeature
-        .map(ZkTraceComparisonFeature::fromMask)
-        .map(enumSet -> enumSet.stream().map(Enum::name).collect(Collectors.toList()))
-        .orElse(null);
-  }
-
-  @JsonGetter("zkTraceComparisonFeatureMask")
-  public Integer getZkTraceComparisonFeatureMask() {
-    return zkTraceComparisonFeature.orElse(null);
-  }
-
-  @JsonGetter("accountChangesCount")
-  public int getAccountChangesCount() {
-    return accounts.size();
-  }
-
-  @JsonGetter("codeChangesCount")
-  public int getCodeChangesCount() {
-    return code.size();
-  }
-
-  @JsonGetter("storageChangesCount")
-  public int getStorageChangesCount() {
-    return storage.values().stream().mapToInt(Map::size).sum();
   }
 
   public String dump() {

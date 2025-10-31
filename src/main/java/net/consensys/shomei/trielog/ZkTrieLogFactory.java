@@ -109,8 +109,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
           (Map<Address, LogTuple<AccountValue>>) accountsToUpdate,
           (Map<Address, LogTuple<Bytes>>) codeToUpdate,
           (Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate,
-          true,
-          Optional.of(comparisonFeatureMask.get()));
+          true);
     } finally {
       ctx.getBlockImportTraceProvider().clear();
     }
@@ -282,6 +281,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     output.writeBytes(layer.getBlockHash());
     // optionally write block number
     layer.getBlockNumber().ifPresent(output::writeLongScalar);
+
     for (final Address address : addresses) {
       output.startList(); // this change
       output.writeBytes(address);
@@ -327,10 +327,6 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       output.endList(); // this change
     }
 
-    // optionally write zkTraceComparisonFeature
-    if (layer instanceof PluginTrieLogLayer pluginLayer) {
-      pluginLayer.zkTraceComparisonFeature().ifPresent(output::writeInt);
-    }
     output.endList(); // container
   }
 
@@ -416,17 +412,9 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       // lenient leave list for forward compatible additions.
       input.leaveListLenient();
     }
-
-    // zkTraceComparisonFeature is optional (read as last element in container, before leaving)
-    Optional<Integer> zkTraceComparisonFeature =
-        Optional.of(!input.isEndOfCurrentList())
-            .filter(isPresent -> isPresent)
-            .map(__ -> input.readInt());
-
     input.leaveListLenient();
 
-    return new PluginTrieLogLayer(
-        blockHash, blockNumber, accounts, code, storage, true, zkTraceComparisonFeature);
+    return new PluginTrieLogLayer(blockHash, blockNumber, accounts, code, storage, true);
   }
 
   protected static <T> T nullOrValue(final RLPInput input, final Function<RLPInput, T> reader) {
