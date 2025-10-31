@@ -55,6 +55,16 @@ public record PluginTrieLogLayer(
     @JsonIgnore Optional<Integer> zkTraceComparisonFeature)
     implements TrieLog {
 
+  public PluginTrieLogLayer(
+      Hash blockHash,
+      Optional<Long> blockNumber,
+      Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
+      Map<Address, TrieLog.LogTuple<Bytes>> code,
+      Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
+      boolean frozen) {
+    this(blockHash, blockNumber, accounts, code, storage, frozen, Optional.empty());
+  }
+
   /** Creates a new PluginTrieLogLayer with blockhash and empty maps to deserialize into. */
   public PluginTrieLogLayer(final Hash blockHash) {
     this(

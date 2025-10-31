@@ -15,6 +15,7 @@
 package net.consensys.shomei.trielog;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -90,6 +91,15 @@ public class ZkTrieLogFactoryTests {
         .put(
             Address.ZERO,
             Map.of(new StorageSlotKey(UInt256.ZERO), new TrieLogValue<>(null, UInt256.ONE, false)));
+  }
+
+  @Test
+  public void assertPluginTrieLogLayerApiBackwardsCompatibility() {
+    assertDoesNotThrow(
+        () -> {
+          new PluginTrieLogLayer(
+              Hash.ZERO, Optional.of(1L), new HashMap<>(), new HashMap<>(), new HashMap<>(), true);
+        });
   }
 
   @Test
