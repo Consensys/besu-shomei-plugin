@@ -45,7 +45,7 @@ public class ShomeiGetTrieLog implements PluginRpcMethod {
     return ctx.getTrieLogService()
         .getTrieLogProvider()
         .getTrieLogLayer(blockNumber)
-        .map(t -> Bytes.wrap(ctx.getZkTrieLogFactory().serialize(t)).toHexString())
+        .map(t -> Bytes.wrap(ctx.getZkTrieLogFactory().serializeWithoutMetadata(t)).toHexString())
         .orElse("");
   }
 }

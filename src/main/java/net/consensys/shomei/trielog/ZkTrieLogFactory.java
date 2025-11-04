@@ -266,11 +266,18 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   @Override
   public byte[] serialize(final TrieLog layer) {
     final BytesValueRLPOutput rlpLog = new BytesValueRLPOutput();
-    writeTo(layer, rlpLog);
+    writeTo(layer, rlpLog, true);
     return rlpLog.encoded().toArrayUnsafe();
   }
 
-  public static void writeTo(final TrieLog layer, final RLPOutput output) {
+  public byte[] serializeWithoutMetadata(final TrieLog layer) {
+    final BytesValueRLPOutput rlpLog = new BytesValueRLPOutput();
+    writeTo(layer, rlpLog, false);
+    return rlpLog.encoded().toArrayUnsafe();
+  }
+
+  private static void writeTo(
+      final TrieLog layer, final RLPOutput output, final boolean includeMetadata) {
     layer.freeze();
 
     final Set<Address> addresses = new TreeSet<>();
@@ -328,7 +335,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     }
 
     // optionally write zkTraceComparisonFeature
-    if (layer instanceof PluginTrieLogLayer pluginLayer) {
+    if (includeMetadata && layer instanceof PluginTrieLogLayer pluginLayer) {
       pluginLayer.zkTraceComparisonFeature().ifPresent(output::writeInt);
     }
     output.endList(); // container
@@ -361,7 +368,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
             .filter(isPresent -> isPresent)
             .map(__ -> input.readLongScalar());
 
-    while (!input.isEndOfCurrentList()) {
+    while (!input.isEndOfCurrentList() && input.nextIsList()) {
       input.enterList();
       final Address address = Address.readFrom(input);
 
