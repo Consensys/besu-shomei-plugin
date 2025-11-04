@@ -23,6 +23,10 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLogProvider;
 
+/**
+ * JSON response object for TrieLog data. Note: This class serializes TrieLogs WITHOUT zktracer
+ * comparison feature metadata.
+ */
 public class TrieLogJson {
 
   @JsonProperty("blockHash")
@@ -39,7 +43,8 @@ public class TrieLogJson {
       final TrieLogProvider.TrieLogRangeTuple tuple, final ZkTrieLogFactory trieLogFactory) {
     this.blockHash = tuple.blockHash();
     this.blockNumber = tuple.blockNumber();
-    this.trieLog = Bytes.wrap(trieLogFactory.serialize(tuple.trieLog())).toHexString();
+    this.trieLog =
+        Bytes.wrap(trieLogFactory.serializeWithoutMetadata(tuple.trieLog())).toHexString();
   }
 
   public TrieLogJson(Hash blockHash, long blockNumber, String trieLog) {
