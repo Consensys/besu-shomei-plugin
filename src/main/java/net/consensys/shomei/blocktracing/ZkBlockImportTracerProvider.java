@@ -14,6 +14,7 @@
  */
 package net.consensys.shomei.blocktracing;
 
+import static net.consensys.linea.zktracer.Fork.fromMainnetHardforkIdToTracerFork;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.ACCUMULATOR_TO_HUB;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.DECORATE_FROM_HUB;
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.FILTER_FROM_HUB;
@@ -22,7 +23,6 @@ import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature
 import static net.consensys.shomei.cli.ShomeiCliOptions.ZkTraceComparisonFeature.anyEnabled;
 
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.shomei.context.ShomeiContext;
 
@@ -89,18 +89,11 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
       return BlockAwareOperationTracer.NO_TRACING;
     }
 
-    final var forkId = blockchainService.getHardforkId(blockHeader);
-
-    ZkTracer zkTracer =
+    final HardforkId.MainnetHardforkId forkId =
+        (HardforkId.MainnetHardforkId) blockchainService.getHardforkId(blockHeader);
+    final ZkTracer zkTracer =
         new ZkTracer(
-            switch (forkId) {
-              case HardforkId.MainnetHardforkId.LONDON -> Fork.LONDON;
-              case HardforkId.MainnetHardforkId.PARIS -> Fork.PARIS;
-              case HardforkId.MainnetHardforkId.SHANGHAI -> Fork.SHANGHAI;
-              case HardforkId.MainnetHardforkId.CANCUN -> Fork.CANCUN;
-              case HardforkId.MainnetHardforkId.PRAGUE -> Fork.PRAGUE;
-              default -> throw new RuntimeException("Unknown fork id " + forkId);
-            },
+            fromMainnetHardforkIdToTracerFork(forkId),
             LineaL1L2BridgeSharedConfiguration.EMPTY,
             chainIdSupplier.get().orElseThrow(() -> new RuntimeException("Chain Id unavailable")));
 
