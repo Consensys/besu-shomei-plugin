@@ -15,43 +15,16 @@ import groovy.transform.Memoized
  * SPDX-License-Identifier: Apache-2.0
  */
 
-buildscript {
-    repositories {
-        maven {
-            url "https://artifacts.consensys.net/public/linea-besu/maven/"
-            content { includeGroupByRegex('io\\.consensys\\..*') }
-            content { includeGroupByRegex('org\\.hyperledger\\..*') }
-        }
-        maven {
-            url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
-            content { includeGroupByRegex('org\\.hyperledger\\.besu\\..*')}
-        }
-        mavenCentral()
-        maven {
-            url "https://artifacts.consensys.net/public/maven/maven/"
-            content { includeGroupByRegex('tech\\.pegasys\\..*')}
-        }
-        mavenLocal()
-    }
-    dependencies {
-        classpath 'tech.pegasys.internal.license.reporter:license-reporter:1.1.1'
-    }
-}
-
 plugins {
     id 'com.diffplug.spotless' version '6.21.0'
-    id 'com.github.ben-manes.versions' version '0.46.0'
     id 'com.github.hierynomus.license' version '0.16.1'
     id 'io.spring.dependency-management' version '1.1.0'
     id 'com.github.jk1.dependency-license-report' version '2.1'
     id 'net.ltgt.errorprone' version '3.0.1' apply false
-    id 'com.github.johnrengelman.shadow' version '7.1.2'
-    id 'java'
-    id 'java-library'
+    id 'net.consensys.besu-plugin-distribution' version '0.1.2'
 }
 
-
-apply plugin: 'java-library'
+apply plugin: 'net.consensys.besu-plugin-distribution'
 apply plugin: 'io.spring.dependency-management'
 apply plugin: 'net.ltgt.errorprone'
 apply plugin: 'jacoco'
@@ -62,42 +35,26 @@ group = 'net.consensys.shomei.besu.plugin'
 //version = '0.1.0'
 version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
 
-sourceCompatibility = JavaVersion.VERSION_21
-targetCompatibility = JavaVersion.VERSION_21
+java {
+    sourceCompatibility = 21
+    targetCompatibility = 21
+}
 
 defaultTasks 'build', 'checkLicenses', 'javadoc', 'plugin'
 
 repositories {
-    maven {
-        url "https://artifacts.consensys.net/public/linea-besu/maven/"
-        content { includeGroupByRegex('io\\.consensys\\..*') }
-        content { includeGroupByRegex('org\\.hyperledger\\..*') }
-    }
-    maven {
-        url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
-        content { includeGroupByRegex('org\\.hyperledger\\.besu\\..*')}
-    }
     mavenCentral()
-    maven {
-        url "https://artifacts.consensys.net/public/maven/maven/"
-        content { includeGroupByRegex('tech\\.pegasys($|\\..*)')}
-    }
     maven {
         url "https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/"
         content { includeGroupByRegex('io\\.libp2p($|\\..*)') }
     }
-    maven {
-        url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
-        content { includeGroupByRegex('org\\.hyperledger\\.besu($|\\..*)') }
-    }
-    mavenLocal()
     maven {
         url "https://artifacts.consensys.net/public/linea-arithmetization/maven/"
         content {
             includeGroupByRegex('net\\.consensys\\.linea\\..*?')
         }
     }
-
+    mavenLocal()
 }
 
 apply plugin: 'com.diffplug.spotless'
@@ -198,100 +155,23 @@ sourceSets {
 configurations {
     testSupportImplementation
     testSupportRuntimeOnly
-
-    all {
-        // transitive versions conflict new Besu coordinates
-        exclude group: 'org.hyperledger.besu.internal', module: 'dsl'
-        exclude group: 'org.hyperledger.besu.internal', module: 'besu'
-        exclude group: 'org.hyperledger.besu.internal', module: 'config'
-        exclude group: 'org.hyperledger.besu.internal', module: 'clique'
-        exclude group: 'org.hyperledger.besu.internal', module: 'common'
-        exclude group: 'org.hyperledger.besu.internal', module: 'ibft'
-        exclude group: 'org.hyperledger.besu.internal', module: 'ibftlegacy'
-        exclude group: 'org.hyperledger.besu.internal', module: 'merge'
-        exclude group: 'org.hyperledger.besu.internal', module: 'qbft'
-        exclude group: 'org.hyperledger.besu.internal', module: 'qbft-core'
-        exclude group: 'org.hyperledger.besu.internal', module: 'algorithms'
-        exclude group: 'org.hyperledger.besu.internal', module: 'services'
-        exclude group: 'org.hyperledger.besu.internal', module: 'api'
-        exclude group: 'org.hyperledger.besu.internal', module: 'blockcreation'
-        exclude group: 'org.hyperledger.besu.internal', module: 'core'
-        exclude group: 'org.hyperledger.besu.internal', module: 'eth'
-        exclude group: 'org.hyperledger.besu.internal', module: 'p2p'
-        exclude group: 'org.hyperledger.besu.internal', module: 'permissioning'
-        exclude group: 'org.hyperledger.besu.internal', module: 'referencetests'
-        exclude group: 'org.hyperledger.besu.internal', module: 'rlp'
-        exclude group: 'org.hyperledger.besu.internal', module: 'trie'
-        exclude group: 'org.hyperledger.besu', module: 'evm'
-        exclude group: 'org.hyperledger.besu.internal', module: 'metrics-core'
-        exclude group: 'org.hyperledger.besu', module: 'plugin-api'
-        exclude group: 'org.hyperledger.besu.internal', module: 'testutil'
-        exclude group: 'org.hyperledger.besu.internal', module: 'util'
-        exclude group: 'org.hyperledger.besu.internal', module: 'nat'
-        exclude group: 'org.hyperledger.besu.internal', module: 'tasks'
-        exclude group: 'org.hyperledger.besu.internal', module: 'pipeline'
-        exclude group: 'org.hyperledger.besu.internal', module: 'kvstore'
-        exclude group: 'org.hyperledger.besu.internal', module: 'enclave'
-    }
 }
 
 dependencies {
-    testImplementation sourceSets.testSupport.output
-
-    // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
-    annotationProcessor 'com.google.auto.service:auto-service'
     errorprone("com.google.errorprone:error_prone_core")
     errorprone("tech.pegasys.tools.epchecks:errorprone-checks")
 
-    // Dependencies provided by BESU at runtime
-    compileOnly 'com.google.auto.service:auto-service-annotations'
-    compileOnly 'com.google.guava:guava'
-    compileOnly 'org.slf4j:slf4j-api'
-    compileOnly 'info.picocli:picocli'
-    implementation('io.vertx:vertx-web-client') { transitive = false }
-    implementation('io.vertx:vertx-uri-template') { transitive = false }
-    compileOnly 'io.vertx:vertx-web'
-    compileOnly 'org.apache.logging.log4j:log4j-slf4j2-impl'
-    compileOnly 'org.apache.logging.log4j:log4j-core'
-    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
-    compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
-    compileOnly 'org.hyperledger.besu.internal:besu-ethereum-rlp'
-    compileOnly 'org.hyperledger.besu:besu-plugin-api'
-    compileOnly 'org.hyperledger.besu:besu-datatypes'
-    compileOnly 'org.hyperledger.besu.internal:besu-ethereum-core'
-    compileOnly 'org.hyperledger.besu:besu-evm'
+    implementation 'io.vertx:vertx-web-client'
+    implementation 'net.consensys.linea.zktracer:arithmetization'
 
-    // This will be provided by besu package
-    compileOnly 'net.consensys.linea.zktracer:arithmetization'
-
-    testImplementation 'io.vertx:vertx-web'
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
-    testImplementation 'com.fasterxml.jackson.core:jackson-annotations'
-    testImplementation 'net.consensys.linea.zktracer:arithmetization'
-    testImplementation 'org.slf4j:slf4j-api'
-    testImplementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
-    testImplementation 'org.apache.logging.log4j:log4j-core'
-    testImplementation 'org.hyperledger.besu.internal:besu-ethereum-rlp'
-    testImplementation 'org.hyperledger.besu:besu-plugin-api'
-    testImplementation 'org.hyperledger.besu:besu-datatypes'
-    testImplementation "org.hyperledger.besu.internal:besu-testutil"
-    testImplementation "org.hyperledger.besu.internal:besu-crypto-algorithms"
-    testImplementation 'org.hyperledger.besu.internal:besu-ethereum-core'
-    testImplementation 'org.hyperledger.besu:besu-evm'
+    testImplementation sourceSets.testSupport.output
+    testImplementation 'io.vertx:vertx-junit5'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter-params'
     testImplementation 'org.mockito:mockito-core'
     testImplementation 'org.mockito:mockito-junit-jupiter'
-    testImplementation 'io.vertx:vertx-junit5'
-    testImplementation 'com.google.guava:guava'
-
-    // pull in testSupport
-    testImplementation "org.hyperledger.besu.internal:besu-ethereum-core:${besuVersion}:test-support@jar"
 }
-
-apply plugin: 'java'
 
 jar {
     archiveBaseName = 'besu-shomei-plugin'
@@ -304,10 +184,12 @@ jar {
                 'Implementation-Version': calculateVersion()
         )
     }
+}
 
-    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
-    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-    duplicatesStrategy(DuplicatesStrategy.INCLUDE)
+distributions {
+    main {
+        distributionBaseName = 'besu-shomei-plugin'
+    }
 }
 
 test {
