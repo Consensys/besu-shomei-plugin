@@ -161,9 +161,11 @@ dependencies {
     errorprone("com.google.errorprone:error_prone_core")
     errorprone("tech.pegasys.tools.epchecks:errorprone-checks")
 
-    implementation 'io.vertx:vertx-web-client'
-    implementation 'net.consensys.linea.zktracer:arithmetization'
+    compileOnly 'net.consensys.linea.zktracer:arithmetization'
 
+    implementation 'io.vertx:vertx-web-client'
+
+    testImplementation 'net.consensys.linea.zktracer:arithmetization'
     testImplementation sourceSets.testSupport.output
     testImplementation 'io.vertx:vertx-junit5'
     testImplementation 'org.assertj:assertj-core'
