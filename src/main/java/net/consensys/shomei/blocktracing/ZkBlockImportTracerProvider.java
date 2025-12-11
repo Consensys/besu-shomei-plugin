@@ -28,14 +28,16 @@ import net.consensys.shomei.context.ShomeiContext;
 
 import java.math.BigInteger;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Suppliers;
@@ -64,8 +66,9 @@ import org.slf4j.LoggerFactory;
  */
 public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ZkBlockImportTracerProvider.class);
+  private static final int MAX_TRACER_HISTORY_SIZE = 3;
 
-  private final AtomicReference<HeaderTracerTuple> currentTracer = new AtomicReference<>();
+  private final Deque<HeaderTracerTuple> tracerHistory = new ConcurrentLinkedDeque<>();
   private final BlockchainService blockchainService;
   private final Supplier<Optional<BigInteger>> chainIdSupplier;
   private final Supplier<Integer> featureMask;
@@ -98,12 +101,32 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
             chainIdSupplier.get().orElseThrow(() -> new RuntimeException("Chain Id unavailable")));
 
     LOG.debug("returning zkTracer for {}", headerLogString(blockHeader));
-    currentTracer.set(new HeaderTracerTuple(blockHeader, zkTracer));
+
+    // Add to the FIFO list
+    tracerHistory.addLast(new HeaderTracerTuple(blockHeader, zkTracer));
+
+    // Evict oldest entries if we exceed the max size
+    while (tracerHistory.size() > MAX_TRACER_HISTORY_SIZE) {
+      tracerHistory.removeFirst();
+    }
+
     return zkTracer;
   }
 
-  public Optional<HeaderTracerTuple> getCurrentTracerTuple() {
-    return Optional.ofNullable(currentTracer.get());
+  public Optional<HeaderTracerTuple> getCurrentTracerTuple(final BlockHeader blockheader) {
+    // Iterate from the end (most recent) to find the latest tracer for the given block header
+    return StreamSupport.stream(
+            ((Iterable<HeaderTracerTuple>) () -> tracerHistory.descendingIterator()).spliterator(),
+            false)
+        .filter(tuple -> tuple.header().getBlockHash().equals(blockheader.getBlockHash()))
+        .findFirst();
+  }
+
+  public Optional<HeaderTracerTuple> getEarliestTracerTuple(final BlockHeader blockHeader) {
+    // Iterate from the beginning (oldest) to find the earliest tracer for the given block header
+    return tracerHistory.stream()
+        .filter(tuple -> tuple.header().getBlockHash().equals(blockHeader.getBlockHash()))
+        .findFirst();
   }
 
   /**
@@ -124,29 +147,24 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
       return HubDiffTuple.EMPTY;
     }
 
-    if (getCurrentTracerTuple().isEmpty()) {
+    var optTracerTuple = getEarliestTracerTuple(blockHeader);
+    if (optTracerTuple.isEmpty()) {
       LOG.warn(
           "No tracer found while attempting to compare block number {}, skipping comparison",
           blockHeader.getNumber());
       return HubDiffTuple.EMPTY;
     }
 
-    final var current =
-        getCurrentTracerTuple()
-            .filter(t -> t.header().getBlockHash().equals(blockHeader.getBlockHash()));
-
-    if (current.isEmpty()) {
-      throw new IllegalStateException(
-          String.format(
-              "Block %s not found in the Tracer. Current trace block %s",
-              headerLogString(blockHeader),
-              getCurrentTracerTuple()
-                  .map(t -> t.header)
-                  .map(this::headerLogString)
-                  .orElse("empty")));
-    }
-
-    var zkTracerTuple = current.get();
+    var zkTracerTuple =
+        optTracerTuple
+            .filter(t -> t.header().getBlockHash().equals(blockHeader.getBlockHash()))
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        String.format(
+                            "Block %s not found in the Tracer. Current trace block %s",
+                            headerLogString(blockHeader),
+                            optTracerTuple.map(z -> headerLogString(z.header)).orElse("empty"))));
 
     // use tracer state to compare besu accumulator:
     var hubAccountsSeen = zkTracerTuple.zkTracer.getAddressesSeenByHubForRelativeBlock(1);
@@ -362,7 +380,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     }
   }
 
-  public String headerLogString(final BlockHeader header) {
+  public static String headerLogString(final BlockHeader header) {
     return header.getNumber() + " (" + header.getBlockHash() + ")";
   }
 
