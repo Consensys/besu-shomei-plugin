@@ -86,7 +86,8 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   }
 
   @Override
-  public BlockAwareOperationTracer getBlockImportTracer(final BlockHeader blockHeader) {
+  public synchronized BlockAwareOperationTracer getBlockImportTracer(
+      final BlockHeader blockHeader) {
     // if blockheader is prior to the configured skip-until param, return no_tracing
     if (!enableZkTracing.get() || (skipTraceUntil.get() > blockHeader.getNumber())) {
       return BlockAwareOperationTracer.NO_TRACING;
@@ -147,24 +148,15 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
       return HubDiffTuple.EMPTY;
     }
 
-    var optTracerTuple = getEarliestTracerTuple(blockHeader);
-    if (optTracerTuple.isEmpty()) {
-      LOG.warn(
-          "No tracer found while attempting to compare block number {}, skipping comparison",
-          blockHeader.getNumber());
-      return HubDiffTuple.EMPTY;
-    }
-
     var zkTracerTuple =
-        optTracerTuple
+        getEarliestTracerTuple(blockHeader)
             .filter(t -> t.header().getBlockHash().equals(blockHeader.getBlockHash()))
             .orElseThrow(
                 () ->
                     new IllegalStateException(
                         String.format(
-                            "Block %s not found in the Tracer. Current trace block %s",
-                            headerLogString(blockHeader),
-                            optTracerTuple.map(z -> headerLogString(z.header)).orElse("empty"))));
+                            "Block %s not found in the Tracer while attempting comparison with Hub.",
+                            headerLogString(blockHeader))));
 
     // use tracer state to compare besu accumulator:
     var hubAccountsSeen = zkTracerTuple.zkTracer.getAddressesSeenByHubForRelativeBlock(1);
