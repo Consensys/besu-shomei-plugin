@@ -399,4 +399,112 @@ public class ZkBlockImportTracerProviderTest {
         create2TrielogSeen.get(new StorageSlotKey(UInt256.fromBytes(revertedSlotKey)));
     assertNotNull(trieLogSlotVal);
   }
+
+  @Test
+  void testGetCurrentAndEarliestTracerWithThreeDifferentBlockHeaders() {
+    // Setup three different block headers
+    BlockHeader header1 = mock(BlockHeader.class);
+    when(header1.getNumber()).thenReturn(1L);
+    when(header1.getBlockHash())
+        .thenReturn(
+            Hash.fromHexString(
+                "0x1111111111111111111111111111111111111111111111111111111111111111"));
+
+    BlockHeader header2 = mock(BlockHeader.class);
+    when(header2.getNumber()).thenReturn(2L);
+    when(header2.getBlockHash())
+        .thenReturn(
+            Hash.fromHexString(
+                "0x2222222222222222222222222222222222222222222222222222222222222222"));
+
+    BlockHeader header3 = mock(BlockHeader.class);
+    when(header3.getNumber()).thenReturn(3L);
+    when(header3.getBlockHash())
+        .thenReturn(
+            Hash.fromHexString(
+                "0x3333333333333333333333333333333333333333333333333333333333333333"));
+
+    // Enable zkTracing
+    testOpts.enableZkTracer = true;
+    testOpts.zkSkipTraceUntil = 0;
+    when(mockBlockchainService.getChainId()).thenReturn(Optional.of(BigInteger.valueOf(1L)));
+
+    // Create tracers for each block header
+    comparator.getBlockImportTracer(header1);
+    comparator.getBlockImportTracer(header2);
+    comparator.getBlockImportTracer(header3);
+
+    // Verify getCurrentTracerTuple returns the correct tracer for each block
+    var currentTracer1 = comparator.getCurrentTracerTuple(header1);
+    assertTrue(currentTracer1.isPresent());
+    assertEquals(header1.getBlockHash(), currentTracer1.get().header().getBlockHash());
+
+    var currentTracer2 = comparator.getCurrentTracerTuple(header2);
+    assertTrue(currentTracer2.isPresent());
+    assertEquals(header2.getBlockHash(), currentTracer2.get().header().getBlockHash());
+
+    var currentTracer3 = comparator.getCurrentTracerTuple(header3);
+    assertTrue(currentTracer3.isPresent());
+    assertEquals(header3.getBlockHash(), currentTracer3.get().header().getBlockHash());
+
+    // Verify getEarliestTracerTuple returns the correct tracer for each block
+    var earliestTracer1 = comparator.getEarliestTracerTuple(header1);
+    assertTrue(earliestTracer1.isPresent());
+    assertEquals(header1.getBlockHash(), earliestTracer1.get().header().getBlockHash());
+
+    var earliestTracer2 = comparator.getEarliestTracerTuple(header2);
+    assertTrue(earliestTracer2.isPresent());
+    assertEquals(header2.getBlockHash(), earliestTracer2.get().header().getBlockHash());
+
+    var earliestTracer3 = comparator.getEarliestTracerTuple(header3);
+    assertTrue(earliestTracer3.isPresent());
+    assertEquals(header3.getBlockHash(), earliestTracer3.get().header().getBlockHash());
+
+    // For different block headers, getCurrentTracerTuple and getEarliestTracerTuple should return
+    // the same tracer
+    assertEquals(currentTracer1.get().zkTracer(), earliestTracer1.get().zkTracer());
+    assertEquals(currentTracer2.get().zkTracer(), earliestTracer2.get().zkTracer());
+    assertEquals(currentTracer3.get().zkTracer(), earliestTracer3.get().zkTracer());
+  }
+
+  @Test
+  void testGetCurrentAndEarliestTracerWithSameBlockHeaderThreeTimes() {
+    // Setup one block header
+    BlockHeader header = mock(BlockHeader.class);
+    when(header.getNumber()).thenReturn(1L);
+    when(header.getBlockHash())
+        .thenReturn(
+            Hash.fromHexString(
+                "0x1111111111111111111111111111111111111111111111111111111111111111"));
+
+    // Enable zkTracing
+    testOpts.enableZkTracer = true;
+    testOpts.zkSkipTraceUntil = 0;
+    when(mockBlockchainService.getChainId()).thenReturn(Optional.of(BigInteger.valueOf(1L)));
+
+    // Create three tracers for the same block header
+    var tracer1 = comparator.getBlockImportTracer(header);
+    var tracer2 = comparator.getBlockImportTracer(header);
+    var tracer3 = comparator.getBlockImportTracer(header);
+
+    // Verify all three tracers are different instances
+    assertNotNull(tracer1);
+    assertNotNull(tracer2);
+    assertNotNull(tracer3);
+
+    // getCurrentTracerTuple should return the LATEST (third) tracer
+    var currentTracer = comparator.getCurrentTracerTuple(header);
+    assertTrue(currentTracer.isPresent());
+    assertEquals(header.getBlockHash(), currentTracer.get().header().getBlockHash());
+    assertEquals(tracer3, currentTracer.get().zkTracer());
+
+    // getEarliestTracerTuple should return the EARLIEST (first) tracer
+    var earliestTracer = comparator.getEarliestTracerTuple(header);
+    assertTrue(earliestTracer.isPresent());
+    assertEquals(header.getBlockHash(), earliestTracer.get().header().getBlockHash());
+    assertEquals(tracer1, earliestTracer.get().zkTracer());
+
+    // Verify they are different tracers
+    assertThat(earliestTracer.get().zkTracer()).isNotSameAs(currentTracer.get().zkTracer());
+  }
 }
