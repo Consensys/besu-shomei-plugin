@@ -95,7 +95,7 @@ public class ZkBlockImportTracerProviderTest {
     testOpts.zkTraceComparisonMask = 31;
     lenient()
         .when(mockBlockchainService.getHardforkId(any()))
-        .thenReturn(HardforkId.MainnetHardforkId.LONDON);
+        .thenReturn(HardforkId.MainnetHardforkId.OSAKA);
     comparator = spy(new ZkBlockImportTracerProvider(testContext, mockBlockchainService));
   }
 
