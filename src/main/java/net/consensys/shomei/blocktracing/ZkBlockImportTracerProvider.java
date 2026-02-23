@@ -44,7 +44,6 @@ import com.google.common.base.Suppliers;
 import com.google.common.collect.Sets;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.bytes.DelegatingBytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Address;
@@ -389,10 +388,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                 prior.getNonce(),
                 Optional.ofNullable(prior.getBalance()).map(Wei::toShortHexString).orElse("null"),
                 Optional.ofNullable(prior.getCodeHash())
-                    .map(DelegatingBytes::toHexString)
+                    .map(hash -> Bytes32.wrap(hash.getBytes()))
+                    .map(Bytes32::toHexString)
                     .orElse("null"),
                 Optional.ofNullable(prior.getStorageRoot())
-                    .map(DelegatingBytes::toHexString)
+                    .map(hash -> Bytes32.wrap(hash.getBytes()))
+                    .map(Bytes32::toHexString)
                     .orElse("null")));
       }
       if (updated != null) {
@@ -402,10 +403,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                 updated.getNonce(),
                 Optional.ofNullable(updated.getBalance()).map(Wei::toShortHexString).orElse("null"),
                 Optional.ofNullable(updated.getCodeHash())
-                    .map(DelegatingBytes::toHexString)
+                    .map(hash -> Bytes32.wrap(hash.getBytes()))
+                    .map(Bytes32::toHexString)
                     .orElse("null"),
                 Optional.ofNullable(updated.getStorageRoot())
-                    .map(DelegatingBytes::toHexString)
+                    .map(hash -> Bytes32.wrap(hash.getBytes()))
+                    .map(Bytes32::toHexString)
                     .orElse("null")));
       }
     } else {
@@ -427,10 +430,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
             String.format(
                 "_CodeHash pre:%s;post:%s",
                 Optional.ofNullable(prior.getCodeHash())
-                    .map(DelegatingBytes::toHexString)
+                    .map(hash -> Bytes32.wrap(hash.getBytes()))
+                    .map(Bytes32::toHexString)
                     .orElse("null"),
                 Optional.ofNullable(updated.getCodeHash())
-                    .map(DelegatingBytes::toHexString)
+                    .map(hash -> Bytes32.wrap(hash.getBytes()))
+                    .map(Bytes32::toHexString)
                     .orElse("null")));
       }
       if (!prior.getStorageRoot().equals(updated.getStorageRoot())) {
@@ -438,10 +443,12 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
             String.format(
                 "_StorageRoot pre:%s;post:%s",
                 Optional.ofNullable(prior.getStorageRoot())
-                    .map(DelegatingBytes::toHexString)
+                    .map(hash -> Bytes32.wrap(hash.getBytes()))
+                    .map(Bytes32::toHexString)
                     .orElse("null"),
                 Optional.ofNullable(updated.getStorageRoot())
-                    .map(DelegatingBytes::toHexString)
+                    .map(hash -> Bytes32.wrap(hash.getBytes()))
+                    .map(Bytes32::toHexString)
                     .orElse("null")));
       }
     }

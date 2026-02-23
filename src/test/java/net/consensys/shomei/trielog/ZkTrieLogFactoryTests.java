@@ -186,7 +186,7 @@ public class ZkTrieLogFactoryTests {
         new BonsaiAccount(
             null,
             mockAddress,
-            Hash.hash(mockAddress),
+            Hash.hash(mockAddress.getBytes()),
             0,
             Wei.ONE,
             Hash.EMPTY_TRIE_HASH,
@@ -197,7 +197,7 @@ public class ZkTrieLogFactoryTests {
         new BonsaiAccount(
             null,
             mockAddress2,
-            Hash.hash(mockAddress2),
+            Hash.hash(mockAddress2.getBytes()),
             0,
             Wei.ZERO,
             Hash.EMPTY_TRIE_HASH,
