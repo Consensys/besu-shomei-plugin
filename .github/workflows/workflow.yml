@@ -27,7 +27,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Assemble
         run: ./gradlew --no-daemon clean compileJava compileTestJava assemble
@@ -59,7 +59,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Download workspace
         uses: actions/download-artifact@v4
