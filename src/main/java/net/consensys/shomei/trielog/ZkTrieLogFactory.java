@@ -279,12 +279,12 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     addresses.addAll(layer.getStorageChanges().keySet());
 
     output.startList(); // container
-    output.writeBytes(layer.getBlockHash().getBytes());
+    output.writeBytes(layer.getBlockHash());
     // optionally write block number
     layer.getBlockNumber().ifPresent(output::writeLongScalar);
     for (final Address address : addresses) {
       output.startList(); // this change
-      output.writeBytes(address.getBytes());
+      output.writeBytes(address);
 
       final LogTuple<Bytes> codeChange = layer.getCodeChanges().get(address);
       if (codeChange == null || codeChange.isUnchanged()) {
@@ -314,7 +314,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
           output.startList();
 
           StorageSlotKey storageSlotKey = storageChangeEntry.getKey();
-          output.writeBytes(storageSlotKey.getSlotHash().getBytes());
+          output.writeBytes(storageSlotKey.getSlotHash());
           writeInnerRlp(storageChangeEntry.getValue(), output, RLPOutput::writeUInt256Scalar);
           if (storageSlotKey.getSlotKey().isPresent()) {
             output.writeUInt256Scalar(storageSlotKey.getSlotKey().get());
