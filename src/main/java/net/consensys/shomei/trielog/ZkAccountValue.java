@@ -50,8 +50,8 @@ public record ZkAccountValue(long nonce, Wei balance, Hash storageRoot, Hash cod
 
     out.writeLongScalar(nonce);
     out.writeUInt256Scalar(balance);
-    out.writeBytes(storageRoot.getBytes());
-    out.writeBytes(codeHash.getBytes());
+    out.writeBytes(storageRoot);
+    out.writeBytes(codeHash);
 
     out.endList();
   }
@@ -64,13 +64,13 @@ public record ZkAccountValue(long nonce, Wei balance, Hash storageRoot, Hash cod
     Bytes32 storageRoot;
     Bytes32 codeHash;
     if (in.nextIsNull()) {
-      storageRoot = Bytes32.wrap(Hash.EMPTY_TRIE_HASH.getBytes());
+      storageRoot = Hash.EMPTY_TRIE_HASH;
       in.skipNext();
     } else {
       storageRoot = in.readBytes32();
     }
     if (in.nextIsNull()) {
-      codeHash = Bytes32.wrap(Hash.EMPTY.getBytes());
+      codeHash = Hash.EMPTY;
       in.skipNext();
     } else {
       codeHash = in.readBytes32();
