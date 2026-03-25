@@ -490,21 +490,6 @@ public class ZkTrieLogFactoryTests {
   }
 
   @Test
-  void assertDecorateAccountsSkipsEntryWhenAccountIsNull() {
-    final Address address = Address.fromHexString("0x1234");
-
-    final var mockAccumulator =
-        mock(PathBasedWorldStateUpdateAccumulator.class, RETURNS_DEEP_STUBS);
-    doAnswer(__ -> null).when(mockAccumulator).getAccount(eq(address));
-
-    final Map<Address, LogTuple<AccountValue>> result =
-        ZkTrieLogFactory.decorateAccounts(new HashMap<>(), Set.of(address), mockAccumulator);
-
-    // computeIfAbsent does not insert null-returning mappings
-    assertFalse(result.containsKey(address));
-  }
-
-  @Test
   void assertHubSeenWithUpdateTrackingAccountIsPresentInTrieLog() {
     // Reproduces the engine_newPayload crash: getAccount() returns an UpdateTrackingAccount
     // instead of a bare PathBasedAccount.

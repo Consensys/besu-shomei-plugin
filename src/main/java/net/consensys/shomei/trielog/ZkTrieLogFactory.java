@@ -127,13 +127,6 @@ public class ZkTrieLogFactory implements TrieLogFactory {
             __ -> {
               final Account rawAccount = worldStateUpdateAccumulator.getAccount(hubAccount);
               final PathBasedAccount account = unwrapToPathBasedAccount(rawAccount);
-              if (account == null) {
-                LOG.warn(
-                    "cannot resolve PathBasedAccount for hub account {}, raw type: {}",
-                    hubAccount,
-                    rawAccount == null ? "null" : rawAccount.getClass().getName());
-                return null;
-              }
               return new PathBasedValue<>(account, account, false);
             });
       }
@@ -145,16 +138,13 @@ public class ZkTrieLogFactory implements TrieLogFactory {
   }
 
   private static PathBasedAccount unwrapToPathBasedAccount(final Account account) {
-    if (account == null) {
-      return null;
-    }
-    if (account instanceof PathBasedAccount pathBasedAccount) {
-      return pathBasedAccount;
-    }
-    if (account instanceof UpdateTrackingAccount<?> trackingAccount) {
-      return unwrapToPathBasedAccount(trackingAccount.getWrappedAccount());
-    }
-    return null;
+    return switch (account) {
+      case null -> null;
+      case PathBasedAccount pathBasedAccount -> pathBasedAccount;
+      case UpdateTrackingAccount<?> trackingAccount -> unwrapToPathBasedAccount(
+          trackingAccount.getWrappedAccount());
+      default -> null;
+    };
   }
 
   @VisibleForTesting
