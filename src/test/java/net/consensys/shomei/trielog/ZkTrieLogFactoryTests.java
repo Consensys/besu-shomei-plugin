@@ -49,6 +49,7 @@ import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.BonsaiAccount;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.cache.CodeCache;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedValue;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.accumulator.PathBasedWorldStateUpdateAccumulator;
+import org.hyperledger.besu.evm.worldstate.UpdateTrackingAccount;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog.LogTuple;
@@ -419,5 +420,159 @@ public class ZkTrieLogFactoryTests {
 
     // Assert address3 is filtered out entirely
     assertFalse(result.containsKey(address3));
+  }
+
+  @Test
+  void assertDecorateAccountsHandlesUpdateTrackingAccount() {
+    final Address address = Address.fromHexString("0xdeadbeef");
+    final CodeCache codeCache = new CodeCache();
+    final BonsaiAccount bonsaiAccount =
+        new BonsaiAccount(
+            null,
+            address,
+            Hash.hash(address),
+            1,
+            Wei.ONE,
+            Hash.EMPTY_TRIE_HASH,
+            Hash.EMPTY,
+            false,
+            codeCache);
+
+    // Simulate what PathBasedWorldStateUpdateAccumulator.getAccount() returns during
+    // engine_newPayload: AbstractWorldUpdater wraps the raw PathBasedAccount in a
+    // UpdateTrackingAccount before returning it.
+    final UpdateTrackingAccount<BonsaiAccount> trackingAccount =
+        new UpdateTrackingAccount<>(bonsaiAccount);
+
+    final var mockAccumulator =
+        mock(PathBasedWorldStateUpdateAccumulator.class, RETURNS_DEEP_STUBS);
+    doAnswer(__ -> trackingAccount).when(mockAccumulator).getAccount(eq(address));
+
+    final Map<Address, LogTuple<AccountValue>> result =
+        ZkTrieLogFactory.decorateAccounts(new HashMap<>(), Set.of(address), mockAccumulator);
+
+    assertThat(result.containsKey(address)).isTrue();
+    assertThat(result.get(address).getPrior()).isEqualTo(bonsaiAccount);
+    assertThat(result.get(address).getUpdated()).isEqualTo(bonsaiAccount);
+  }
+
+  @Test
+  void assertDecorateAccountsHandlesNestedUpdateTrackingAccount() {
+    final Address address = Address.fromHexString("0xc0ffee");
+    final CodeCache codeCache = new CodeCache();
+    final BonsaiAccount bonsaiAccount =
+        new BonsaiAccount(
+            null,
+            address,
+            Hash.hash(address),
+            0,
+            Wei.ZERO,
+            Hash.EMPTY_TRIE_HASH,
+            Hash.EMPTY,
+            false,
+            codeCache);
+
+    // Two levels of wrapping: UpdateTrackingAccount<UpdateTrackingAccount<BonsaiAccount>>
+    final UpdateTrackingAccount<BonsaiAccount> inner = new UpdateTrackingAccount<>(bonsaiAccount);
+    final UpdateTrackingAccount<UpdateTrackingAccount<BonsaiAccount>> outer =
+        new UpdateTrackingAccount<>(inner);
+
+    final var mockAccumulator =
+        mock(PathBasedWorldStateUpdateAccumulator.class, RETURNS_DEEP_STUBS);
+    doAnswer(__ -> outer).when(mockAccumulator).getAccount(eq(address));
+
+    final Map<Address, LogTuple<AccountValue>> result =
+        ZkTrieLogFactory.decorateAccounts(new HashMap<>(), Set.of(address), mockAccumulator);
+
+    assertThat(result.containsKey(address)).isTrue();
+    assertThat(result.get(address).getPrior()).isEqualTo(bonsaiAccount);
+    assertThat(result.get(address).getUpdated()).isEqualTo(bonsaiAccount);
+  }
+
+  @Test
+  void assertDecorateAccountsSkipsEntryWhenAccountIsNull() {
+    final Address address = Address.fromHexString("0x1234");
+
+    final var mockAccumulator =
+        mock(PathBasedWorldStateUpdateAccumulator.class, RETURNS_DEEP_STUBS);
+    doAnswer(__ -> null).when(mockAccumulator).getAccount(eq(address));
+
+    final Map<Address, LogTuple<AccountValue>> result =
+        ZkTrieLogFactory.decorateAccounts(new HashMap<>(), Set.of(address), mockAccumulator);
+
+    // computeIfAbsent does not insert null-returning mappings
+    assertFalse(result.containsKey(address));
+  }
+
+  @Test
+  void assertHubSeenWithUpdateTrackingAccountIsPresentInTrieLog() {
+    // Reproduces the engine_newPayload crash: getAccount() returns an UpdateTrackingAccount
+    // instead of a bare PathBasedAccount.
+    final var mockTraceProvider = mock(ZkBlockImportTracerProvider.class);
+    final Address wrappedAddress = Address.fromHexString("0xbabe");
+    final Address directAddress = Address.fromHexString("0xc0ffee");
+
+    final var mockDiff =
+        new ZkBlockImportTracerProvider.HubSeenDiff(
+            Set.of(wrappedAddress, directAddress), Collections.emptyMap());
+    final var mockDiffTuple = new ZkBlockImportTracerProvider.HubDiffTuple(mockDiff, mockDiff);
+    doAnswer(__ -> mockDiffTuple).when(mockTraceProvider).compareWithTrace(any(), any());
+
+    final ShomeiCliOptions testOpts = new ShomeiCliOptions();
+    testOpts.zkTraceComparisonMask = 15;
+    testCtx.setCliOptions(testOpts).setBlockImportTraceProvider(mockTraceProvider);
+
+    final CodeCache codeCache = new CodeCache();
+
+    // wrappedAddress: getAccount() returns an UpdateTrackingAccount (engine_newPayload path)
+    final BonsaiAccount wrappedBonsai =
+        new BonsaiAccount(
+            null,
+            wrappedAddress,
+            Hash.hash(wrappedAddress),
+            2,
+            Wei.fromEth(3),
+            Hash.EMPTY_TRIE_HASH,
+            Hash.EMPTY,
+            false,
+            codeCache);
+    final UpdateTrackingAccount<BonsaiAccount> trackingAccount =
+        new UpdateTrackingAccount<>(wrappedBonsai);
+
+    // directAddress: getAccount() returns a bare BonsaiAccount (normal import path)
+    final BonsaiAccount directBonsai =
+        new BonsaiAccount(
+            null,
+            directAddress,
+            Hash.hash(directAddress),
+            0,
+            Wei.ONE,
+            Hash.EMPTY_TRIE_HASH,
+            Hash.EMPTY,
+            false,
+            codeCache);
+
+    final var mockAccumulator =
+        mock(PathBasedWorldStateUpdateAccumulator.class, RETURNS_DEEP_STUBS);
+    doAnswer(__ -> trackingAccount).when(mockAccumulator).getAccount(eq(wrappedAddress));
+    doAnswer(__ -> directBonsai).when(mockAccumulator).getAccount(eq(directAddress));
+    doAnswer(__ -> new HashMap<>()).when(mockAccumulator).getAccountsToUpdate();
+    doAnswer(__ -> new HashMap<>()).when(mockAccumulator).getStorageToUpdate();
+
+    final var mockHeader = mock(BlockHeader.class, RETURNS_DEEP_STUBS);
+    final var factory = new ZkTrieLogFactory(testCtx);
+
+    // Must not throw ClassCastException
+    final var trielog = factory.create(mockAccumulator, mockHeader);
+
+    // Both addresses must appear with the unwrapped PathBasedAccount as prior/updated
+    assertThat(trielog.getAccountChanges().containsKey(wrappedAddress)).isTrue();
+    assertThat(trielog.getAccountChanges().get(wrappedAddress).getPrior()).isEqualTo(wrappedBonsai);
+    assertThat(trielog.getAccountChanges().get(wrappedAddress).getUpdated())
+        .isEqualTo(wrappedBonsai);
+
+    assertThat(trielog.getAccountChanges().containsKey(directAddress)).isTrue();
+    assertThat(trielog.getAccountChanges().get(directAddress).getPrior()).isEqualTo(directBonsai);
+    assertThat(trielog.getAccountChanges().get(directAddress).getUpdated()).isEqualTo(directBonsai);
   }
 }

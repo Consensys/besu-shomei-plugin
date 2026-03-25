@@ -47,6 +47,8 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedAccount;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedValue;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.accumulator.PathBasedWorldStateUpdateAccumulator;
+import org.hyperledger.besu.evm.account.Account;
+import org.hyperledger.besu.evm.worldstate.UpdateTrackingAccount;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog.LogTuple;
@@ -123,8 +125,15 @@ public class ZkTrieLogFactory implements TrieLogFactory {
         decorated.computeIfAbsent(
             hubAccount,
             __ -> {
-              final PathBasedAccount account =
-                  (PathBasedAccount) worldStateUpdateAccumulator.getAccount(hubAccount);
+              final Account rawAccount = worldStateUpdateAccumulator.getAccount(hubAccount);
+              final PathBasedAccount account = unwrapToPathBasedAccount(rawAccount);
+              if (account == null) {
+                LOG.warn(
+                    "cannot resolve PathBasedAccount for hub account {}, raw type: {}",
+                    hubAccount,
+                    rawAccount == null ? "null" : rawAccount.getClass().getName());
+                return null;
+              }
               return new PathBasedValue<>(account, account, false);
             });
       }
@@ -133,6 +142,19 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     }
 
     return decorated;
+  }
+
+  private static PathBasedAccount unwrapToPathBasedAccount(final Account account) {
+    if (account == null) {
+      return null;
+    }
+    if (account instanceof PathBasedAccount pathBasedAccount) {
+      return pathBasedAccount;
+    }
+    if (account instanceof UpdateTrackingAccount<?> trackingAccount) {
+      return unwrapToPathBasedAccount(trackingAccount.getWrappedAccount());
+    }
+    return null;
   }
 
   @VisibleForTesting
