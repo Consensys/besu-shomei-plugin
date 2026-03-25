@@ -47,6 +47,8 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedAccount;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedValue;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.worldview.accumulator.PathBasedWorldStateUpdateAccumulator;
+import org.hyperledger.besu.evm.account.Account;
+import org.hyperledger.besu.evm.worldstate.UpdateTrackingAccount;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 import org.hyperledger.besu.plugin.services.trielogs.TrieLog.LogTuple;
@@ -123,8 +125,8 @@ public class ZkTrieLogFactory implements TrieLogFactory {
         decorated.computeIfAbsent(
             hubAccount,
             __ -> {
-              final PathBasedAccount account =
-                  (PathBasedAccount) worldStateUpdateAccumulator.getAccount(hubAccount);
+              final Account rawAccount = worldStateUpdateAccumulator.getAccount(hubAccount);
+              final PathBasedAccount account = unwrapToPathBasedAccount(rawAccount);
               return new PathBasedValue<>(account, account, false);
             });
       }
@@ -133,6 +135,16 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     }
 
     return decorated;
+  }
+
+  private static PathBasedAccount unwrapToPathBasedAccount(final Account account) {
+    return switch (account) {
+      case null -> null;
+      case PathBasedAccount pathBasedAccount -> pathBasedAccount;
+      case UpdateTrackingAccount<?> trackingAccount -> unwrapToPathBasedAccount(
+          trackingAccount.getWrappedAccount());
+      default -> null;
+    };
   }
 
   @VisibleForTesting
