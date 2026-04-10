@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ZkBlockImportTracerProvider.class);
-  private static final int MAX_TRACER_HISTORY_SIZE = 3;
+  private static final int MAX_TRACER_HISTORY_SIZE = 5;
 
   private final Deque<HeaderTracerTuple> tracerHistory = new ConcurrentLinkedDeque<>();
   private final BlockchainService blockchainService;
