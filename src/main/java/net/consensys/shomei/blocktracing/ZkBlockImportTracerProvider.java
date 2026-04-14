@@ -197,7 +197,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                       LOG.warn(
                           "block {} hub account {} is missing all keys {} in accumulator storage slot modifications",
                           blockHeader.getNumber(),
-                          address.toHexString(),
+                          address.getBytes().toHexString(),
                           hubSlots.stream()
                               .map(Bytes32::toShortHexString)
                               .collect(Collectors.joining(","))));
@@ -220,7 +220,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                               LOG.warn(
                                   "block {} hub account {} slot key {} is missing from accumulator modifications",
                                   blockHeader.getNumber(),
-                                  address.toHexString(),
+                                  address.getBytes().toHexString(),
                                   slot.toHexString())));
               // add missing hubSeenSlots for this address to diff map
               if (!missingSlots.isEmpty() && anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
@@ -242,7 +242,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                     LOG.warn(
                         "block {} accumulator storage account {} is missing from hub seen storage modifications",
                         blockHeader.getNumber(),
-                        address.toHexString());
+                        address.getBytes().toHexString());
                     if (anyEnabled(featureMask.get(), FILTER_FROM_HUB)) {
                       // add all accumulator slots for this address to diff map:
                       hubStorageMissingDiff.put(
@@ -286,12 +286,16 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                               LOG.warn(
                                   "block {} accumulator storage account {} slot key {} value pre {} post {} is missing from hub seen storage modifications",
                                   blockHeader.getNumber(),
-                                  address.toHexString(),
+                                  address.getBytes().toHexString(),
                                   storageSlotKey
                                       .getSlotKey()
                                       .map(Bytes::toHexString)
                                       .orElse(
-                                          "hash::" + storageSlotKey.getSlotHash().toHexString()),
+                                          "hash::"
+                                              + storageSlotKey
+                                                  .getSlotHash()
+                                                  .getBytes()
+                                                  .toHexString()),
                                   Optional.ofNullable(slotVal.getUpdated())
                                       .map(UInt256::toShortHexString)
                                       .orElse("null"),
@@ -330,7 +334,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                         LOG.warn(
                             "block {} hub seen account {} is missing from accumulator updated addresses",
                             blockHeader.getNumber(),
-                            hubAddress.toHexString()));
+                            hubAddress.getBytes().toHexString()));
                 if (anyEnabled(featureMask.get(), DECORATE_FROM_HUB)) {
                   hubAccountsFoundDiff.add(hubAddress);
                 }
@@ -348,7 +352,7 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                         LOG.warn(
                             "block {} accumulator address to update {} is missing from hub seen accounts, diff: {} ",
                             blockHeader.getNumber(),
-                            accountAddress.toHexString(),
+                            accountAddress.getBytes().toHexString(),
                             accountDiffString(accountsToUpdate.get(accountAddress))));
                 if (anyEnabled(featureMask.get(), FILTER_FROM_HUB)) {
                   hubAccountsMissingDiff.add(accountAddress);
@@ -387,9 +391,11 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                 "updated is null;prior _Nonce:%d, _Balance:%s, _CodeHash:%s, _StorageRoot: %s",
                 prior.getNonce(),
                 Optional.ofNullable(prior.getBalance()).map(Wei::toShortHexString).orElse("null"),
-                Optional.ofNullable(prior.getCodeHash()).map(Bytes32::toHexString).orElse("null"),
+                Optional.ofNullable(prior.getCodeHash())
+                    .map(h -> h.getBytes().toHexString())
+                    .orElse("null"),
                 Optional.ofNullable(prior.getStorageRoot())
-                    .map(Bytes32::toHexString)
+                    .map(h -> h.getBytes().toHexString())
                     .orElse("null")));
       }
       if (updated != null) {
@@ -398,9 +404,11 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
                 "prior is null;updated _Nonce:%d, _Balance:%s, _CodeHash:%s, _StorageRoot: %s",
                 updated.getNonce(),
                 Optional.ofNullable(updated.getBalance()).map(Wei::toShortHexString).orElse("null"),
-                Optional.ofNullable(updated.getCodeHash()).map(Bytes32::toHexString).orElse("null"),
+                Optional.ofNullable(updated.getCodeHash())
+                    .map(h -> h.getBytes().toHexString())
+                    .orElse("null"),
                 Optional.ofNullable(updated.getStorageRoot())
-                    .map(Bytes32::toHexString)
+                    .map(h -> h.getBytes().toHexString())
                     .orElse("null")));
       }
     } else {
@@ -421,9 +429,11 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
         logBuilder.append(
             String.format(
                 "_CodeHash pre:%s;post:%s",
-                Optional.ofNullable(prior.getCodeHash()).map(Bytes32::toHexString).orElse("null"),
+                Optional.ofNullable(prior.getCodeHash())
+                    .map(h -> h.getBytes().toHexString())
+                    .orElse("null"),
                 Optional.ofNullable(updated.getCodeHash())
-                    .map(Bytes32::toHexString)
+                    .map(h -> h.getBytes().toHexString())
                     .orElse("null")));
       }
       if (!prior.getStorageRoot().equals(updated.getStorageRoot())) {
@@ -431,10 +441,10 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
             String.format(
                 "_StorageRoot pre:%s;post:%s",
                 Optional.ofNullable(prior.getStorageRoot())
-                    .map(Bytes32::toHexString)
+                    .map(h -> h.getBytes().toHexString())
                     .orElse("null"),
                 Optional.ofNullable(updated.getStorageRoot())
-                    .map(Bytes32::toHexString)
+                    .map(h -> h.getBytes().toHexString())
                     .orElse("null")));
       }
     }

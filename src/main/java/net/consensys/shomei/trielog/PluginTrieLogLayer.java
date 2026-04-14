@@ -157,7 +157,7 @@ public record PluginTrieLogLayer(
   // JSON serialization methods for metadata
   @JsonGetter("blockHash")
   public String getBlockHashHex() {
-    return blockHash.toHexString();
+    return blockHash.getBytes().toHexString();
   }
 
   @JsonGetter("blockNumber")

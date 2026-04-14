@@ -14,7 +14,6 @@
  */
 package net.consensys.shomei.trielog;
 
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.AccountValue;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
@@ -50,8 +49,8 @@ public record ZkAccountValue(long nonce, Wei balance, Hash storageRoot, Hash cod
 
     out.writeLongScalar(nonce);
     out.writeUInt256Scalar(balance);
-    out.writeBytes(storageRoot);
-    out.writeBytes(codeHash);
+    out.writeBytes(storageRoot.getBytes());
+    out.writeBytes(codeHash.getBytes());
 
     out.endList();
   }
@@ -61,23 +60,23 @@ public record ZkAccountValue(long nonce, Wei balance, Hash storageRoot, Hash cod
 
     final long nonce = in.readLongScalar();
     final Wei balance = Wei.of(in.readUInt256Scalar());
-    Bytes32 storageRoot;
-    Bytes32 codeHash;
+    Hash storageRoot;
+    Hash codeHash;
     if (in.nextIsNull()) {
       storageRoot = Hash.EMPTY_TRIE_HASH;
       in.skipNext();
     } else {
-      storageRoot = in.readBytes32();
+      storageRoot = Hash.wrap(in.readBytes32());
     }
     if (in.nextIsNull()) {
       codeHash = Hash.EMPTY;
       in.skipNext();
     } else {
-      codeHash = in.readBytes32();
+      codeHash = Hash.wrap(in.readBytes32());
     }
 
     in.leaveList();
 
-    return new ZkAccountValue(nonce, balance, Hash.wrap(storageRoot), Hash.wrap(codeHash));
+    return new ZkAccountValue(nonce, balance, storageRoot, codeHash);
   }
 }

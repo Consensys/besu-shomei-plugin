@@ -27,6 +27,6 @@ public class HashSerializer extends JsonSerializer<Hash> {
   public void serialize(
       final Hash value, final JsonGenerator gen, final SerializerProvider serializers)
       throws IOException {
-    gen.writeString(value.toHexString());
+    gen.writeString(value.getBytes().toHexString());
   }
 }
