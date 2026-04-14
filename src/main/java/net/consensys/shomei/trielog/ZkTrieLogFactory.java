@@ -164,7 +164,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
                 }
                 LOG.error(
                     "refusing to filter account value write, address: {}",
-                    accumulatorEntry.getKey().toHexString());
+                    accumulatorEntry.getKey().getBytes().toHexString());
               }
               return true;
             })
@@ -247,7 +247,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
                               LOG.error(
                                   "refusing to filter slot value write, "
                                       + "address: {}, slot key: {}, prior: {}, updated: {}",
-                                  address.toHexString(),
+                                  address.getBytes().toHexString(),
                                   trieLogKey.getSlotKey().map(UInt256::toHexString).orElse("empty"),
                                   Optional.ofNullable(trieLogVal.getPrior())
                                       .map(UInt256::toHexString)
@@ -291,12 +291,12 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     addresses.addAll(layer.getStorageChanges().keySet());
 
     output.startList(); // container
-    output.writeBytes(layer.getBlockHash());
+    output.writeBytes(layer.getBlockHash().getBytes());
     // optionally write block number
     layer.getBlockNumber().ifPresent(output::writeLongScalar);
     for (final Address address : addresses) {
       output.startList(); // this change
-      output.writeBytes(address);
+      output.writeBytes(address.getBytes());
 
       final LogTuple<Bytes> codeChange = layer.getCodeChanges().get(address);
       if (codeChange == null || codeChange.isUnchanged()) {
@@ -326,7 +326,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
           output.startList();
 
           StorageSlotKey storageSlotKey = storageChangeEntry.getKey();
-          output.writeBytes(storageSlotKey.getSlotHash());
+          output.writeBytes(storageSlotKey.getSlotHash().getBytes());
           writeInnerRlp(storageChangeEntry.getValue(), output, RLPOutput::writeUInt256Scalar);
           if (storageSlotKey.getSlotKey().isPresent()) {
             output.writeUInt256Scalar(storageSlotKey.getSlotKey().get());

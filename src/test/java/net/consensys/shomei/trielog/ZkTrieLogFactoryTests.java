@@ -187,7 +187,7 @@ public class ZkTrieLogFactoryTests {
         new BonsaiAccount(
             null,
             mockAddress,
-            Hash.hash(mockAddress),
+            Hash.hash(mockAddress.getBytes()),
             0,
             Wei.ONE,
             Hash.EMPTY_TRIE_HASH,
@@ -198,7 +198,7 @@ public class ZkTrieLogFactoryTests {
         new BonsaiAccount(
             null,
             mockAddress2,
-            Hash.hash(mockAddress2),
+            Hash.hash(mockAddress2.getBytes()),
             0,
             Wei.ZERO,
             Hash.EMPTY_TRIE_HASH,
@@ -430,7 +430,7 @@ public class ZkTrieLogFactoryTests {
         new BonsaiAccount(
             null,
             address,
-            Hash.hash(address),
+            Hash.hash(address.getBytes()),
             1,
             Wei.ONE,
             Hash.EMPTY_TRIE_HASH,
@@ -464,7 +464,7 @@ public class ZkTrieLogFactoryTests {
         new BonsaiAccount(
             null,
             address,
-            Hash.hash(address),
+            Hash.hash(address.getBytes()),
             0,
             Wei.ZERO,
             Hash.EMPTY_TRIE_HASH,
@@ -514,7 +514,7 @@ public class ZkTrieLogFactoryTests {
         new BonsaiAccount(
             null,
             wrappedAddress,
-            Hash.hash(wrappedAddress),
+            Hash.hash(wrappedAddress.getBytes()),
             2,
             Wei.fromEth(3),
             Hash.EMPTY_TRIE_HASH,
@@ -529,7 +529,7 @@ public class ZkTrieLogFactoryTests {
         new BonsaiAccount(
             null,
             directAddress,
-            Hash.hash(directAddress),
+            Hash.hash(directAddress.getBytes()),
             0,
             Wei.ONE,
             Hash.EMPTY_TRIE_HASH,
