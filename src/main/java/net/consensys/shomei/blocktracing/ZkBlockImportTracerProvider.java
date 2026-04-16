@@ -123,9 +123,15 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
   }
 
   public Optional<HeaderTracerTuple> getEarliestTracerTuple(final BlockHeader blockHeader) {
-    // Iterate from the beginning (oldest) to find the earliest tracer for the given block header
+    // Iterate from the beginning (oldest) to find the earliest tracer for the given block header.
+    // Match by exact block hash first. Also match when the tuple's header hash equals the lookup
+    // header's parentHash — this covers the eth_simulateV1 path where EthSimulateV1 calls
+    // getBlockImportTracer(parentHeader) but compareWithTrace receives the simulated block's header.
     return tracerHistory.stream()
-        .filter(tuple -> tuple.header().getBlockHash().equals(blockHeader.getBlockHash()))
+        .filter(
+            tuple ->
+                tuple.header().getBlockHash().equals(blockHeader.getBlockHash())
+                    || tuple.header().getBlockHash().equals(blockHeader.getParentHash()))
         .findFirst();
   }
 
@@ -149,7 +155,6 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
 
     var zkTracerTuple =
         getEarliestTracerTuple(blockHeader)
-            .filter(t -> t.header().getBlockHash().equals(blockHeader.getBlockHash()))
             .orElseThrow(
                 () ->
                     new IllegalStateException(
