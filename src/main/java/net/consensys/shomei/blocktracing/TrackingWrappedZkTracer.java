@@ -21,7 +21,7 @@ import net.consensys.linea.zktracer.ZkTracer;
 import java.math.BigInteger;
 import java.util.function.BiConsumer;
 
-import graphql.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
