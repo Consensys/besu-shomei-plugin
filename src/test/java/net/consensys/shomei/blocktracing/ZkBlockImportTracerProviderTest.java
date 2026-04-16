@@ -430,9 +430,17 @@ public class ZkBlockImportTracerProviderTest {
     when(mockBlockchainService.getChainId()).thenReturn(Optional.of(BigInteger.valueOf(1L)));
 
     // Create tracers for each block header
-    comparator.getBlockImportTracer(header1);
-    comparator.getBlockImportTracer(header2);
-    comparator.getBlockImportTracer(header3);
+    var tracer1 = comparator.getBlockImportTracer(header1);
+    var tracer2 = comparator.getBlockImportTracer(header2);
+    var tracer3 = comparator.getBlockImportTracer(header3);
+
+    // call traceEndBlock to trigger the cache add action
+    assertThat(tracer1).isInstanceOf(TrackingWrappedZkTracer.class);
+    assertThat(tracer2).isInstanceOf(TrackingWrappedZkTracer.class);
+    assertThat(tracer3).isInstanceOf(TrackingWrappedZkTracer.class);
+    ((TrackingWrappedZkTracer) tracer1).executeTrackingAction(header1);
+    ((TrackingWrappedZkTracer) tracer2).executeTrackingAction(header2);
+    ((TrackingWrappedZkTracer) tracer3).executeTrackingAction(header3);
 
     // Verify getCurrentTracerTuple returns the correct tracer for each block
     var currentTracer1 = comparator.getCurrentTracerTuple(header1);
@@ -492,13 +500,21 @@ public class ZkBlockImportTracerProviderTest {
     assertNotNull(tracer2);
     assertNotNull(tracer3);
 
-    // getCurrentTracerTuple should return the LATEST (third) tracer
+    // call traceEndBlock to trigger the cache add action
+    assertThat(tracer1).isInstanceOf(TrackingWrappedZkTracer.class);
+    assertThat(tracer2).isInstanceOf(TrackingWrappedZkTracer.class);
+    assertThat(tracer3).isInstanceOf(TrackingWrappedZkTracer.class);
+    ((TrackingWrappedZkTracer) tracer1).executeTrackingAction(header);
+    ((TrackingWrappedZkTracer) tracer2).executeTrackingAction(header);
+    // DO NOT call executeTrackingAction for tracer 3 to mimic an incomplete tracing state
+
+    // getCurrentTracerTuple should return the LATEST COMPLETE(second) tracer
     var currentTracer = comparator.getCurrentTracerTuple(header);
     assertTrue(currentTracer.isPresent());
     assertEquals(header.getBlockHash(), currentTracer.get().header().getBlockHash());
-    assertEquals(tracer3, currentTracer.get().zkTracer());
+    assertEquals(tracer2, currentTracer.get().zkTracer());
 
-    // getEarliestTracerTuple should return the EARLIEST (first) tracer
+    // getEarliestTracerTuple should return the EARLIEST COMPLETE (first) tracer
     var earliestTracer = comparator.getEarliestTracerTuple(header);
     assertTrue(earliestTracer.isPresent());
     assertEquals(header.getBlockHash(), earliestTracer.get().header().getBlockHash());
