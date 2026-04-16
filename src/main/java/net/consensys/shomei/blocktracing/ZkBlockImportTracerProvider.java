@@ -126,7 +126,8 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     // Iterate from the beginning (oldest) to find the earliest tracer for the given block header.
     // Match by exact block hash first. Also match when the tuple's header hash equals the lookup
     // header's parentHash — this covers the eth_simulateV1 path where EthSimulateV1 calls
-    // getBlockImportTracer(parentHeader) but compareWithTrace receives the simulated block's header.
+    // getBlockImportTracer(parentHeader) but compareWithTrace receives the simulated block's
+    // header.
     return tracerHistory.stream()
         .filter(
             tuple ->
