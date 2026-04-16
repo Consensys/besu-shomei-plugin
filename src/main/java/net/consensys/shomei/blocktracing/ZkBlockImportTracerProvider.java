@@ -100,12 +100,11 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
             LineaL1L2BridgeSharedConfiguration.EMPTY,
             chainIdSupplier.get().orElseThrow(() -> new RuntimeException("Chain Id unavailable")),
             (h, t) -> {
-              // Add to the FIFO list
-              tracerHistory.addLast(new HeaderTracerTuple(h, t));
-
-              // Evict oldest entries if we exceed the max size
-              while (tracerHistory.size() > MAX_TRACER_HISTORY_SIZE) {
-                tracerHistory.removeFirst();
+              synchronized (ZkBlockImportTracerProvider.this) {
+                tracerHistory.addLast(new HeaderTracerTuple(h, t));
+                while (tracerHistory.size() > MAX_TRACER_HISTORY_SIZE) {
+                  tracerHistory.pollFirst();
+                }
               }
             });
 

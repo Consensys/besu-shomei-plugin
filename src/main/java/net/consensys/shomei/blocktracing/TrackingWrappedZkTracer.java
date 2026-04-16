@@ -21,6 +21,7 @@ import net.consensys.linea.zktracer.ZkTracer;
 import java.math.BigInteger;
 import java.util.function.BiConsumer;
 
+import graphql.VisibleForTesting;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
@@ -48,6 +49,7 @@ public class TrackingWrappedZkTracer extends ZkTracer {
     this.executeTrackingAction(blockHeader);
   }
 
+  @VisibleForTesting
   void executeTrackingAction(BlockHeader blockHeader) {
     trackAction.accept(blockHeader, this);
   }
