@@ -95,20 +95,20 @@ public class ZkBlockImportTracerProvider implements BlockImportTracerProvider {
     final HardforkId.MainnetHardforkId forkId =
         (HardforkId.MainnetHardforkId) blockchainService.getHardforkId(blockHeader);
     final ZkTracer zkTracer =
-        new ZkTracer(
+        new TrackingWrappedZkTracer(
             fromMainnetHardforkIdToTracerFork(forkId),
             LineaL1L2BridgeSharedConfiguration.EMPTY,
-            chainIdSupplier.get().orElseThrow(() -> new RuntimeException("Chain Id unavailable")));
+            chainIdSupplier.get().orElseThrow(() -> new RuntimeException("Chain Id unavailable")),
+            (h, t) -> {
+              synchronized (ZkBlockImportTracerProvider.this) {
+                tracerHistory.addLast(new HeaderTracerTuple(h, t));
+                while (tracerHistory.size() > MAX_TRACER_HISTORY_SIZE) {
+                  tracerHistory.pollFirst();
+                }
+              }
+            });
 
     LOG.debug("returning zkTracer for {}", headerLogString(blockHeader));
-
-    // Add to the FIFO list
-    tracerHistory.addLast(new HeaderTracerTuple(blockHeader, zkTracer));
-
-    // Evict oldest entries if we exceed the max size
-    while (tracerHistory.size() > MAX_TRACER_HISTORY_SIZE) {
-      tracerHistory.removeFirst();
-    }
 
     return zkTracer;
   }
