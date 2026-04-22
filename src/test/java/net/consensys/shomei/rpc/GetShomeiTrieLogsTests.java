@@ -57,7 +57,14 @@ public class GetShomeiTrieLogsTests {
 
   PluginTrieLogLayer mockLayer =
       new PluginTrieLogLayer(
-          Hash.ZERO, Optional.of(0L), Map.of(), Map.of(), Map.of(), true, Optional.empty());
+          Hash.ZERO,
+          Optional.of(0L),
+          Optional.of(1L),
+          Map.of(),
+          Map.of(),
+          Map.of(),
+          true,
+          Optional.empty());
 
   MockJsonRpcHttpVerticle verticle;
   WebClient client;

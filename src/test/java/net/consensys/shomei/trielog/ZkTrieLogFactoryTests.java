@@ -65,6 +65,7 @@ public class ZkTrieLogFactoryTests {
       new PluginTrieLogLayer(
           Hash.ZERO,
           Optional.of(1L),
+          Optional.of(1L),
           new HashMap<>(),
           new HashMap<>(),
           new HashMap<>(),
@@ -99,7 +100,13 @@ public class ZkTrieLogFactoryTests {
     assertDoesNotThrow(
         () -> {
           new PluginTrieLogLayer(
-              Hash.ZERO, Optional.of(1L), new HashMap<>(), new HashMap<>(), new HashMap<>(), true);
+              Hash.ZERO,
+              Optional.of(1L),
+              Optional.of(1L),
+              new HashMap<>(),
+              new HashMap<>(),
+              new HashMap<>(),
+              true);
         });
   }
 

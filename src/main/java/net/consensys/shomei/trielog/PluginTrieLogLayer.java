@@ -48,6 +48,7 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 public record PluginTrieLogLayer(
     @JsonIgnore Hash blockHash,
     @JsonIgnore Optional<Long> blockNumber,
+    @JsonIgnore Optional<Long> timestamp,
     @JsonIgnore Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
     @JsonIgnore Map<Address, TrieLog.LogTuple<Bytes>> code,
     @JsonIgnore Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
@@ -58,17 +59,19 @@ public record PluginTrieLogLayer(
   public PluginTrieLogLayer(
       Hash blockHash,
       Optional<Long> blockNumber,
+      Optional<Long> timestamp,
       Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
       Map<Address, TrieLog.LogTuple<Bytes>> code,
       Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
       boolean frozen) {
-    this(blockHash, blockNumber, accounts, code, storage, frozen, Optional.empty());
+    this(blockHash, blockNumber, timestamp, accounts, code, storage, frozen, Optional.empty());
   }
 
   /** Creates a new PluginTrieLogLayer with blockhash and empty maps to deserialize into. */
   public PluginTrieLogLayer(final Hash blockHash) {
     this(
         blockHash,
+        Optional.empty(),
         Optional.empty(),
         new HashMap<>(),
         new HashMap<>(),
@@ -91,6 +94,10 @@ public record PluginTrieLogLayer(
   @Override
   public Optional<Long> getBlockNumber() {
     return blockNumber;
+  }
+
+  public Optional<Long> getTimestamp() {
+    return timestamp;
   }
 
   @Override
@@ -163,6 +170,11 @@ public record PluginTrieLogLayer(
   @JsonGetter("blockNumber")
   public Long getBlockNumberValue() {
     return blockNumber.orElse(null);
+  }
+
+  @JsonGetter("timestamp")
+  public Long getTimestampValue() {
+    return timestamp.orElse(null);
   }
 
   @JsonGetter("zkTraceComparisonFeatures")
