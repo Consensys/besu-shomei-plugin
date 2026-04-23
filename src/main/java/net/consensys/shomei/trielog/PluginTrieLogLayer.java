@@ -67,6 +67,45 @@ public record PluginTrieLogLayer(
     this(blockHash, blockNumber, timestamp, accounts, code, storage, frozen, Optional.empty());
   }
 
+  /** Backward-compatible constructor without timestamp. */
+  public PluginTrieLogLayer(
+      Hash blockHash,
+      Optional<Long> blockNumber,
+      Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
+      Map<Address, TrieLog.LogTuple<Bytes>> code,
+      Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
+      boolean frozen) {
+    this(
+        blockHash,
+        blockNumber,
+        Optional.empty(),
+        accounts,
+        code,
+        storage,
+        frozen,
+        Optional.empty());
+  }
+
+  /** Backward-compatible canonical constructor without timestamp. */
+  public PluginTrieLogLayer(
+      Hash blockHash,
+      Optional<Long> blockNumber,
+      Map<Address, TrieLog.LogTuple<AccountValue>> accounts,
+      Map<Address, TrieLog.LogTuple<Bytes>> code,
+      Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage,
+      boolean frozen,
+      Optional<Integer> zkTraceComparisonFeature) {
+    this(
+        blockHash,
+        blockNumber,
+        Optional.empty(),
+        accounts,
+        code,
+        storage,
+        frozen,
+        zkTraceComparisonFeature);
+  }
+
   /** Creates a new PluginTrieLogLayer with blockhash and empty maps to deserialize into. */
   public PluginTrieLogLayer(final Hash blockHash) {
     this(

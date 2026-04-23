@@ -146,6 +146,7 @@ public class GetShomeiTrieLogMetadataTests {
           assertThat(res.getString("blockHash"))
               .isEqualTo("0x0000000000000000000000000000000000000000000000000000000000000000");
           assertThat(res.getLong("blockNumber")).isEqualTo(123L);
+          assertThat(res.getLong("timestamp")).isEqualTo(1L);
           assertThat(res.getJsonArray("zkTraceComparisonFeatures"))
               .containsExactlyInAnyOrder("DECORATE_FROM_HUB", "FILTER_FROM_HUB");
           assertThat(res.getInteger("zkTraceComparisonFeatureMask")).isEqualTo(24);

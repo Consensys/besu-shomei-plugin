@@ -97,16 +97,22 @@ public class ZkTrieLogFactoryTests {
 
   @Test
   public void assertPluginTrieLogLayerApiBackwardsCompatibility() {
+    // Verify old constructor signatures (without timestamp) still compile and work
+    assertDoesNotThrow(
+        () -> {
+          new PluginTrieLogLayer(
+              Hash.ZERO, Optional.of(1L), new HashMap<>(), new HashMap<>(), new HashMap<>(), true);
+        });
     assertDoesNotThrow(
         () -> {
           new PluginTrieLogLayer(
               Hash.ZERO,
               Optional.of(1L),
-              Optional.of(1L),
               new HashMap<>(),
               new HashMap<>(),
               new HashMap<>(),
-              true);
+              true,
+              Optional.of(1));
         });
   }
 
@@ -118,9 +124,15 @@ public class ZkTrieLogFactoryTests {
     TrieLog layer = factory.deserialize(rlp);
     assertThat(layer).isEqualTo(trieLogFixture);
 
+    // equals() ignores metadata fields — verify timestamp explicitly
+    assertThat(layer).isInstanceOf(PluginTrieLogLayer.class);
+    PluginTrieLogLayer deserialized = (PluginTrieLogLayer) layer;
+    assertThat(deserialized.getTimestamp()).isPresent();
+    assertThat(deserialized.getTimestamp().get()).isEqualTo(1L);
+
     assertThat(
             layer.getStorageChanges().get(Address.ZERO).keySet().stream()
-                .map(k -> k.getSlotKey())
+                .map(StorageSlotKey::getSlotKey)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .anyMatch(key -> key.equals(UInt256.ZERO)))
@@ -414,14 +426,14 @@ public class ZkTrieLogFactoryTests {
     // Assert address1 is partially filtered, with only slot3 remaining:
     assertTrue(result.containsKey(address1));
     Map<StorageSlotKey, ? extends LogTuple<UInt256>> filteredSlots = result.get(address1);
-    assertTrue(filteredSlots.size() == 1);
+    assertEquals(1, filteredSlots.size());
     assertTrue(filteredSlots.containsKey(slot3));
     assertEquals(value3, filteredSlots.get(slot3));
 
     // Assert address2 storage is not filtered at all
     assertTrue(result.containsKey(address2));
     Map<StorageSlotKey, ? extends LogTuple<UInt256>> filteredSlots2 = result.get(address2);
-    assertTrue(filteredSlots2.size() == 1);
+    assertEquals(1, filteredSlots2.size());
     assertTrue(filteredSlots2.containsKey(slot2));
     assertEquals(value2, filteredSlots2.get(slot2));
 
