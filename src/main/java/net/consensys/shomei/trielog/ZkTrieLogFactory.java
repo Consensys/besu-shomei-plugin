@@ -297,8 +297,8 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     layer.getBlockNumber().ifPresent(output::writeLongScalar);
 
     if (layer instanceof PluginTrieLogLayer ptl) {
-      if (layer.getBlockNumber().isPresent() && ptl.getTimestamp().isEmpty()) {
-        throw new IllegalStateException("timestamp must be present when blockNumber is set");
+      if (ptl.getTimestamp().isPresent() && layer.getBlockNumber().isEmpty()) {
+        throw new IllegalStateException("blockNumber must be present when timestamp is set");
       }
       // optionally write block timestamp
       ptl.getTimestamp().ifPresent(output::writeLongScalar);
@@ -385,12 +385,11 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
     // timestamp is optional, always present when blockNumber is set
     Optional<Long> timestamp =
-        blockNumber
-            .flatMap(
-                __ ->
-                    Optional.of(!input.nextIsList())
-                        .filter(isPresent -> isPresent)
-                        .map(___ -> input.readLongScalar()));
+        blockNumber.flatMap(
+            __ ->
+                Optional.of(!input.nextIsList())
+                    .filter(isPresent -> isPresent)
+                    .map(___ -> input.readLongScalar()));
 
     while (!input.isEndOfCurrentList() && input.nextIsList()) {
       input.enterList();
