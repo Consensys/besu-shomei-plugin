@@ -59,6 +59,7 @@ public class ZkTrieLogObserverTests {
       new PluginTrieLogLayer(
           Hash.ZERO,
           Optional.of(1337L),
+          Optional.of(1L),
           Map.of(
               Address.ZERO,
               new TrieLogValue<>(

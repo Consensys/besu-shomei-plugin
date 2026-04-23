@@ -104,6 +104,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     return new PluginTrieLogLayer(
         blockHeader.getBlockHash(),
         Optional.of(blockHeader.getNumber()),
+        Optional.of(blockHeader.getTimestamp()),
         (Map<Address, LogTuple<AccountValue>>) accountsToUpdate,
         (Map<Address, LogTuple<Bytes>>) codeToUpdate,
         (Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>>) storageToUpdate,
@@ -294,6 +295,7 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     output.writeBytes(layer.getBlockHash().getBytes());
     // optionally write block number
     layer.getBlockNumber().ifPresent(output::writeLongScalar);
+
     for (final Address address : addresses) {
       output.startList(); // this change
       output.writeBytes(address.getBytes());
@@ -339,9 +341,19 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       output.endList(); // this change
     }
 
-    // optionally write zkTraceComparisonFeature
-    if (includeMetadata && layer instanceof PluginTrieLogLayer pluginLayer) {
-      pluginLayer.zkTraceComparisonFeature().ifPresent(output::writeInt);
+    if (layer instanceof PluginTrieLogLayer pluginLayer) {
+      boolean hasTimestamp = pluginLayer.getTimestamp().isPresent();
+      // optionally write zkTraceComparisonFeature
+      if (includeMetadata || hasTimestamp) {
+        // when timestamp is present, always write zkCompare to preserve positional order
+        if (hasTimestamp) {
+          output.writeInt(pluginLayer.zkTraceComparisonFeature().orElse(0));
+        } else {
+          pluginLayer.zkTraceComparisonFeature().ifPresent(output::writeInt);
+        }
+      }
+      // always write timestamp when present (appended after zkCompare)
+      pluginLayer.getTimestamp().ifPresent(output::writeLongScalar);
     }
     output.endList(); // container
   }
@@ -375,70 +387,82 @@ public class ZkTrieLogFactory implements TrieLogFactory {
 
     while (!input.isEndOfCurrentList() && input.nextIsList()) {
       input.enterList();
-      final Address address = Address.readFrom(input);
-
-      if (input.nextIsNull()) {
-        input.skipNext();
-      } else {
-        input.enterList();
-        final Bytes oldCode = nullOrValue(input, RLPInput::readBytes);
-        final Bytes newCode = nullOrValue(input, RLPInput::readBytes);
-        final boolean isCleared = getOptionalIsCleared(input);
-        input.leaveList();
-        code.put(address, new TrieLogValue<>(oldCode, newCode, isCleared));
-      }
-
-      if (input.nextIsNull()) {
-        input.skipNext();
-      } else {
-        input.enterList();
-        final AccountValue oldValue = nullOrValue(input, ZkAccountValue::readFrom);
-        final AccountValue newValue = nullOrValue(input, ZkAccountValue::readFrom);
-        final boolean isCleared = getOptionalIsCleared(input);
-        input.leaveList();
-        accounts.put(address, new TrieLogValue<>(oldValue, newValue, isCleared));
-      }
-
-      if (input.nextIsNull()) {
-        input.skipNext();
-      } else {
-        final Map<StorageSlotKey, LogTuple<UInt256>> storageChanges = new TreeMap<>();
-        input.enterList();
-        while (!input.isEndOfCurrentList()) {
-          int storageElementlistSize = input.enterList();
-
-          final Hash slotHash = Hash.wrap(input.readBytes32());
-          final UInt256 oldValue = nullOrValue(input, RLPInput::readUInt256Scalar);
-          final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
-          final boolean isCleared = getOptionalIsCleared(input);
-          final Optional<UInt256> slotKey =
-              Optional.of(storageElementlistSize)
-                  .filter(listSize -> listSize == 5)
-                  .map(__ -> input.readUInt256Scalar())
-                  .or(Optional::empty);
-
-          final StorageSlotKey storageSlotKey = new StorageSlotKey(slotHash, slotKey);
-
-          storageChanges.put(storageSlotKey, new TrieLogValue<>(oldValue, newValue, isCleared));
-          input.leaveList();
-        }
-        input.leaveList();
-        storage.put(address, storageChanges);
-      }
-      // lenient leave list for forward compatible additions.
+      readAddressChange(input, accounts, code, storage);
       input.leaveListLenient();
     }
 
-    // zkTraceComparisonFeature is optional (read as last element in container, before leaving)
+    // trailing metadata: zkTraceComparisonFeature is optional, followed by optional timestamp
     Optional<Integer> zkTraceComparisonFeature =
         Optional.of(!input.isEndOfCurrentList())
             .filter(isPresent -> isPresent)
             .map(__ -> input.readInt());
 
+    Optional<Long> timestamp =
+        Optional.of(!input.isEndOfCurrentList())
+            .filter(isPresent -> isPresent)
+            .map(__ -> input.readLongScalar());
+
     input.leaveListLenient();
 
     return new PluginTrieLogLayer(
-        blockHash, blockNumber, accounts, code, storage, true, zkTraceComparisonFeature);
+        blockHash, blockNumber, timestamp, accounts, code, storage, true, zkTraceComparisonFeature);
+  }
+
+  private static void readAddressChange(
+      final RLPInput input,
+      final Map<Address, LogTuple<AccountValue>> accounts,
+      final Map<Address, LogTuple<Bytes>> code,
+      final Map<Address, Map<StorageSlotKey, LogTuple<UInt256>>> storage) {
+    final Address address = Address.readFrom(input);
+
+    if (input.nextIsNull()) {
+      input.skipNext();
+    } else {
+      input.enterList();
+      final Bytes oldCode = nullOrValue(input, RLPInput::readBytes);
+      final Bytes newCode = nullOrValue(input, RLPInput::readBytes);
+      final boolean isCleared = getOptionalIsCleared(input);
+      input.leaveList();
+      code.put(address, new TrieLogValue<>(oldCode, newCode, isCleared));
+    }
+
+    if (input.nextIsNull()) {
+      input.skipNext();
+    } else {
+      input.enterList();
+      final AccountValue oldValue = nullOrValue(input, ZkAccountValue::readFrom);
+      final AccountValue newValue = nullOrValue(input, ZkAccountValue::readFrom);
+      final boolean isCleared = getOptionalIsCleared(input);
+      input.leaveList();
+      accounts.put(address, new TrieLogValue<>(oldValue, newValue, isCleared));
+    }
+
+    if (input.nextIsNull()) {
+      input.skipNext();
+    } else {
+      final Map<StorageSlotKey, LogTuple<UInt256>> storageChanges = new TreeMap<>();
+      input.enterList();
+      while (!input.isEndOfCurrentList()) {
+        int storageElementlistSize = input.enterList();
+
+        final Hash slotHash = Hash.wrap(input.readBytes32());
+        final UInt256 oldValue = nullOrValue(input, RLPInput::readUInt256Scalar);
+        final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
+        final boolean isCleared = getOptionalIsCleared(input);
+        final Optional<UInt256> slotKey =
+            Optional.of(storageElementlistSize)
+                .filter(listSize -> listSize == 5)
+                .map(__ -> input.readUInt256Scalar())
+                .or(Optional::empty);
+
+        final StorageSlotKey storageSlotKey = new StorageSlotKey(slotHash, slotKey);
+
+        storageChanges.put(storageSlotKey, new TrieLogValue<>(oldValue, newValue, isCleared));
+        input.leaveList();
+      }
+      input.leaveList();
+      storage.put(address, storageChanges);
+    }
   }
 
   protected static <T> T nullOrValue(final RLPInput input, final Function<RLPInput, T> reader) {

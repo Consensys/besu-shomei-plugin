@@ -117,7 +117,14 @@ public class GetShomeiTrieLogMetadataTests {
 
     PluginTrieLogLayer mockLayer =
         new PluginTrieLogLayer(
-            Hash.ZERO, Optional.of(123L), accounts, code, storage, true, Optional.of(24));
+            Hash.ZERO,
+            Optional.of(123L),
+            Optional.of(1L),
+            accounts,
+            code,
+            storage,
+            true,
+            Optional.of(24));
 
     // mock single log response
     when(mockProvider.getTrieLogLayer(123)).thenReturn(Optional.of(mockLayer));
@@ -139,6 +146,7 @@ public class GetShomeiTrieLogMetadataTests {
           assertThat(res.getString("blockHash"))
               .isEqualTo("0x0000000000000000000000000000000000000000000000000000000000000000");
           assertThat(res.getLong("blockNumber")).isEqualTo(123L);
+          assertThat(res.getLong("timestamp")).isEqualTo(1L);
           assertThat(res.getJsonArray("zkTraceComparisonFeatures"))
               .containsExactlyInAnyOrder("DECORATE_FROM_HUB", "FILTER_FROM_HUB");
           assertThat(res.getInteger("zkTraceComparisonFeatureMask")).isEqualTo(24);
@@ -156,6 +164,7 @@ public class GetShomeiTrieLogMetadataTests {
             Hash.fromHexString(
                 "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"),
             Optional.of(456L),
+            Optional.of(1L),
             Map.of(),
             Map.of(),
             Map.of(),
