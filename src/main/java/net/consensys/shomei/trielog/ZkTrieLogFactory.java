@@ -296,14 +296,6 @@ public class ZkTrieLogFactory implements TrieLogFactory {
     // optionally write block number
     layer.getBlockNumber().ifPresent(output::writeLongScalar);
 
-    if (layer instanceof PluginTrieLogLayer ptl) {
-      if (ptl.getTimestamp().isPresent() && layer.getBlockNumber().isEmpty()) {
-        throw new IllegalStateException("blockNumber must be present when timestamp is set");
-      }
-      // optionally write block timestamp
-      ptl.getTimestamp().ifPresent(output::writeLongScalar);
-    }
-
     for (final Address address : addresses) {
       output.startList(); // this change
       output.writeBytes(address.getBytes());
@@ -349,9 +341,19 @@ public class ZkTrieLogFactory implements TrieLogFactory {
       output.endList(); // this change
     }
 
-    // optionally write zkTraceComparisonFeature
-    if (includeMetadata && layer instanceof PluginTrieLogLayer pluginLayer) {
-      pluginLayer.zkTraceComparisonFeature().ifPresent(output::writeInt);
+    if (layer instanceof PluginTrieLogLayer pluginLayer) {
+      boolean hasTimestamp = pluginLayer.getTimestamp().isPresent();
+      // optionally write zkTraceComparisonFeature
+      if (includeMetadata || hasTimestamp) {
+        // when timestamp is present, always write zkCompare to preserve positional order
+        if (hasTimestamp) {
+          output.writeInt(pluginLayer.zkTraceComparisonFeature().orElse(0));
+        } else {
+          pluginLayer.zkTraceComparisonFeature().ifPresent(output::writeInt);
+        }
+      }
+      // always write timestamp when present (appended after zkCompare)
+      pluginLayer.getTimestamp().ifPresent(output::writeLongScalar);
     }
     output.endList(); // container
   }
@@ -383,25 +385,22 @@ public class ZkTrieLogFactory implements TrieLogFactory {
             .filter(isPresent -> isPresent)
             .map(__ -> input.readLongScalar());
 
-    // timestamp is optional, always present when blockNumber is set
-    Optional<Long> timestamp =
-        blockNumber.flatMap(
-            __ ->
-                Optional.of(!input.nextIsList())
-                    .filter(isPresent -> isPresent)
-                    .map(___ -> input.readLongScalar()));
-
     while (!input.isEndOfCurrentList() && input.nextIsList()) {
       input.enterList();
       readAddressChange(input, accounts, code, storage);
       input.leaveListLenient();
     }
 
-    // zkTraceComparisonFeature is optional (read as last element in container, before leaving)
+    // trailing metadata: zkTraceComparisonFeature is optional, followed by optional timestamp
     Optional<Integer> zkTraceComparisonFeature =
         Optional.of(!input.isEndOfCurrentList())
             .filter(isPresent -> isPresent)
             .map(__ -> input.readInt());
+
+    Optional<Long> timestamp =
+        Optional.of(!input.isEndOfCurrentList())
+            .filter(isPresent -> isPresent)
+            .map(__ -> input.readLongScalar());
 
     input.leaveListLenient();
 

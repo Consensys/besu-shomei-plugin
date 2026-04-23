@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -45,6 +46,8 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.StorageSlotKey;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
+import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.BonsaiAccount;
 import org.hyperledger.besu.ethereum.trie.pathbased.bonsai.cache.CodeCache;
 import org.hyperledger.besu.ethereum.trie.pathbased.common.PathBasedValue;
@@ -578,5 +581,127 @@ public class ZkTrieLogFactoryTests {
     assertThat(trielog.getAccountChanges().containsKey(directAddress)).isTrue();
     assertThat(trielog.getAccountChanges().get(directAddress).getPrior()).isEqualTo(directBonsai);
     assertThat(trielog.getAccountChanges().get(directAddress).getUpdated()).isEqualTo(directBonsai);
+  }
+
+  @Test
+  void testDeserializeOldFormatWithAddressChanges() {
+    // Simulate old RLP format: [blockHash, blockNumber, [addressChanges...], zkCompare]
+    // (no timestamp field)
+    byte[] oldRlp = serializeOldFormat(trieLogFixture, true);
+
+    TrieLogFactory factory = new ZkTrieLogFactory(testCtx);
+    PluginTrieLogLayer deserialized = (PluginTrieLogLayer) factory.deserialize(oldRlp);
+
+    assertThat(deserialized.getBlockHash()).isEqualTo(Hash.ZERO);
+    assertThat(deserialized.getBlockNumber()).isPresent();
+    assertThat(deserialized.getBlockNumber().get()).isEqualTo(1L);
+    assertThat(deserialized.getTimestamp()).isEmpty();
+    assertThat(deserialized.getAccountChanges()).isEqualTo(trieLogFixture.getAccountChanges());
+    assertThat(deserialized.getCodeChanges()).isEqualTo(trieLogFixture.getCodeChanges());
+    assertThat(deserialized.getStorageChanges()).isEqualTo(trieLogFixture.getStorageChanges());
+  }
+
+  @Test
+  void testDeserializeOldFormatNoAddressChangesWithZkCompare() {
+    // Edge case: old format with blockNumber, no address changes, but zkCompare trailing scalar.
+    // Without list-wrapping, the deserializer would consume zkCompare as timestamp.
+    PluginTrieLogLayer emptyWithZkCompare =
+        new PluginTrieLogLayer(
+            Hash.ZERO,
+            Optional.of(42L),
+            new HashMap<>(),
+            new HashMap<>(),
+            new HashMap<>(),
+            true,
+            Optional.of(15));
+
+    byte[] oldRlp = serializeOldFormat(emptyWithZkCompare, true);
+
+    TrieLogFactory factory = new ZkTrieLogFactory(testCtx);
+    PluginTrieLogLayer deserialized = (PluginTrieLogLayer) factory.deserialize(oldRlp);
+
+    assertThat(deserialized.getBlockNumber()).isPresent();
+    assertThat(deserialized.getBlockNumber().get()).isEqualTo(42L);
+    assertThat(deserialized.getTimestamp()).isEmpty();
+    assertThat(deserialized.zkTraceComparisonFeature()).isPresent();
+    assertThat(deserialized.zkTraceComparisonFeature().get()).isEqualTo(15);
+  }
+
+  @Test
+  void testDeserializeOldFormatMinimal() {
+    // Old format with only blockHash and blockNumber, no changes, no zkCompare
+    PluginTrieLogLayer minimal =
+        new PluginTrieLogLayer(
+            Hash.ZERO, Optional.of(1L), new HashMap<>(), new HashMap<>(), new HashMap<>(), true);
+
+    byte[] oldRlp = serializeOldFormat(minimal, false);
+
+    TrieLogFactory factory = new ZkTrieLogFactory(testCtx);
+    PluginTrieLogLayer deserialized = (PluginTrieLogLayer) factory.deserialize(oldRlp);
+
+    assertThat(deserialized.getBlockNumber()).isPresent();
+    assertThat(deserialized.getBlockNumber().get()).isEqualTo(1L);
+    assertThat(deserialized.getTimestamp()).isEmpty();
+    assertThat(deserialized.zkTraceComparisonFeature()).isEmpty();
+  }
+
+  /**
+   * Produces RLP in the old format (before timestamp was added): [blockHash, blockNumber?,
+   * [addressChanges]*, zkCompare?]
+   */
+  private static byte[] serializeOldFormat(PluginTrieLogLayer layer, boolean includeMetadata) {
+    final BytesValueRLPOutput output = new BytesValueRLPOutput();
+    final var addresses = new TreeSet<Address>();
+    addresses.addAll(layer.getAccountChanges().keySet());
+    addresses.addAll(layer.getCodeChanges().keySet());
+    addresses.addAll(layer.getStorageChanges().keySet());
+
+    output.startList();
+    output.writeBytes(layer.getBlockHash().getBytes());
+    layer.getBlockNumber().ifPresent(output::writeLongScalar);
+    // NOTE: no timestamp — this is the old format
+
+    for (final Address address : addresses) {
+      output.startList();
+      output.writeBytes(address.getBytes());
+
+      final LogTuple<Bytes> codeChange = layer.getCodeChanges().get(address);
+      if (codeChange == null || codeChange.isUnchanged()) {
+        output.writeNull();
+      } else {
+        ZkTrieLogFactory.writeRlp(codeChange, output, RLPOutput::writeBytes);
+      }
+
+      final LogTuple<AccountValue> accountChange = layer.getAccountChanges().get(address);
+      if (accountChange == null) {
+        output.writeNull();
+      } else {
+        ZkTrieLogFactory.writeRlp(accountChange, output, (o, sta) -> sta.writeTo(o));
+      }
+
+      final var storageChanges = layer.getStorageChanges().get(address);
+      if (storageChanges == null || storageChanges.isEmpty()) {
+        output.writeNull();
+      } else {
+        output.startList();
+        for (final var storageEntry : storageChanges.entrySet()) {
+          output.startList();
+          output.writeBytes(storageEntry.getKey().getSlotHash().getBytes());
+          ZkTrieLogFactory.writeInnerRlp(
+              storageEntry.getValue(), output, RLPOutput::writeUInt256Scalar);
+          storageEntry.getKey().getSlotKey().ifPresent(output::writeUInt256Scalar);
+          output.endList();
+        }
+        output.endList();
+      }
+
+      output.endList();
+    }
+
+    if (includeMetadata) {
+      layer.zkTraceComparisonFeature().ifPresent(output::writeInt);
+    }
+    output.endList();
+    return output.encoded().toArrayUnsafe();
   }
 }
