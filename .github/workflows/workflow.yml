@@ -30,6 +30,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        with:
+          cache-read-only: true
 
       - name: Assemble
         run: ./gradlew --no-daemon clean compileJava compileTestJava assemble
@@ -64,6 +66,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        with:
+          cache-read-only: true
 
       - name: Download workspace
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
